@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+count.txt
+.nitro
+.tanstack
+
+# Sentry Config File
+.env.sentry-build-plugin
+
+.wrangler
+.idea
+
+# Auto-generated files
+src/routeTree.gen.ts

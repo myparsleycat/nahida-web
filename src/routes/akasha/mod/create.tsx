@@ -1,0 +1,247 @@
+import { useForm, type AnyFieldApi } from "@tanstack/react-form";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+
+import { Center, Random1619 } from "@/components/common";
+import { DatePicker } from "@/components/DatePicker";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import TagsInput from "@/components/ui/tags-input";
+import { Textarea } from "@/components/ui/textarea";
+import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
+import { eden } from "@/lib/eden";
+
+export const Route = createFileRoute("/akasha/mod/create")({
+  component: RouteComponent,
+  head: () => ({
+    meta: [{ title: "업로드 | 나히다 라이브" }],
+  }),
+});
+
+function RouteComponent() {
+  const { t } = useTranslation();
+  const navi = useNavigate();
+
+  interface Values {
+    title: string;
+    tags: Array<string>;
+    description: string | undefined;
+    expires: Date | undefined;
+    password: string | undefined;
+  }
+
+  const defaultValues: Values = {
+    title: "",
+    tags: [],
+    description: undefined,
+    expires: undefined,
+    password: undefined,
+  };
+
+  const form = useForm({
+    defaultValues,
+    onSubmit: async ({ value }) => {
+      const { title, tags, description, expires, password } = value;
+
+      const { data, error } = await eden.akasha.mod.create.post({
+        title,
+        tags,
+        description,
+        expires,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.value.toString());
+        return;
+      }
+
+      const { modId, sig } = data;
+
+      if (sig) {
+        modStorage.setMod(modId, { sig });
+      }
+
+      await navi({
+        to: "/akasha/mod/$modId",
+        params: { modId },
+      });
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    form.handleSubmit().catch((err) => {
+      toast.warning(err.message);
+    });
+  };
+
+  function FieldInfo({ field }: { field: AnyFieldApi }) {
+    return (
+      <>
+        {field.state.meta.isTouched && !field.state.meta.isValid ? (
+          <em className="text-destructive">{field.state.meta.errors.join(", ")}</em>
+        ) : null}
+        {field.state.meta.isValidating ? "Validating..." : null}
+      </>
+    );
+  }
+
+  return (
+    <Center size="page-full">
+      <form className="flex w-lg flex-col space-y-6 rounded-lg border p-6" onSubmit={handleSubmit}>
+        <form.Field
+          name="title"
+          validators={{
+            onChange: ({ value }) => {
+              if (!value) {
+                return "타이틀을 입력해 주세요";
+              } else if (value.length > 255) {
+                return "타이틀은 최대 255자까지 입력할 수 있습니다";
+              }
+            },
+            onChangeAsyncDebounceMs: 500,
+          }}
+          children={(f) => {
+            return (
+              <div className="w-fullitems-center grid gap-2">
+                <Label htmlFor={f.name}>{t("upload.title")}</Label>
+                <Input
+                  id={f.name}
+                  name={f.name}
+                  // placeholder={t('g.required')}
+                  value={f.state.value}
+                  onChange={(e) => f.handleChange(e.target.value)}
+                  required
+                />
+                <FieldInfo field={f} />
+              </div>
+            );
+          }}
+        />
+
+        <form.Field
+          name="tags"
+          validators={{
+            onChange: ({ value }) => {
+              if (value.length === 0) {
+                return "태그를 최소 1개 이상 입력해 주세요";
+              }
+            },
+            onChangeAsyncDebounceMs: 500,
+          }}
+          children={(f) => {
+            return (
+              <div className="w-fullitems-center grid gap-2">
+                <Label htmlFor={f.name}>{t("upload.tags")}</Label>
+                <TagsInput
+                  value={f.state.value}
+                  onValueChange={f.handleChange}
+                  className="w-full"
+                />
+                <FieldInfo field={f} />
+              </div>
+            );
+          }}
+        />
+
+        <form.Field
+          name="description"
+          validators={{
+            onChange: ({ value }) => {
+              if (value && value.length > 2500) {
+                return "설명은 최대 2500자까지 작성할 수 있습니다";
+              }
+            },
+            onChangeAsyncDebounceMs: 500,
+          }}
+          children={(f) => {
+            return (
+              <div className="w-fullitems-center grid gap-2">
+                <Label htmlFor={f.name}>{t("upload.description")}</Label>
+                <Textarea
+                  id={f.name}
+                  rows={3}
+                  value={f.state.value}
+                  onChange={(e) => f.handleChange(e.target.value)}
+                />
+                <FieldInfo field={f} />
+              </div>
+            );
+          }}
+        />
+
+        <form.Field
+          name="expires"
+          validators={{
+            onChange: ({ value }) => {
+              if (value && new Date(value) < new Date()) {
+                return "만료일 설정 오류";
+              }
+            },
+            onChangeAsyncDebounceMs: 500,
+          }}
+          children={(f) => {
+            return (
+              <div className="w-fullitems-center grid gap-2">
+                <Label htmlFor={f.name}>{t("upload.expiration_date")}</Label>
+                <DatePicker
+                  className="w-full"
+                  value={f.state.value}
+                  onChange={f.handleChange}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const sevenDaysLater = new Date(today);
+                    sevenDaysLater.setDate(today.getDate() + 7);
+
+                    return date < sevenDaysLater;
+                  }}
+                />
+                <FieldInfo field={f} />
+              </div>
+            );
+          }}
+        />
+
+        <form.Field
+          name="password"
+          validators={{
+            onChange: ({ value }) => {
+              if (value && value.length > 255) {
+                return "비밀번호는 최대 255자까지 입력할 수 있습니다";
+              }
+            },
+            onChangeAsyncDebounceMs: 500,
+          }}
+          children={(f) => {
+            return (
+              <div className="w-fullitems-center grid gap-2">
+                <Label htmlFor={f.name}>{t("g.password")}</Label>
+                <Input id={f.name} value={f.state.value} onValueChange={f.handleChange} />
+                <FieldInfo field={f} />
+              </div>
+            );
+          }}
+        />
+
+        <div className="flex justify-end">
+          <form.Subscribe
+            selector={(s) => [s.canSubmit, s.isSubmitting]}
+            children={([canSubmit, isSubmitting]) => (
+              <button className="size-16" type="submit" disabled={!canSubmit}>
+                {isSubmitting ? <Spinner /> : <Random1619 />}
+              </button>
+            )}
+          />
+        </div>
+      </form>
+    </Center>
+  );
+}

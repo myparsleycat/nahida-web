@@ -1,0 +1,261 @@
+import {
+  ArrowUpDownIcon,
+  CircleXIcon,
+  DownloadIcon,
+  FileIcon,
+  FolderIcon,
+  Loader2Icon,
+  LoaderIcon,
+} from "lucide-react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+
+import { buttonVariants } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { akasha, useAkashaStore, type CurrentProcess } from "@/lib/akasha";
+import { cn, formatSize } from "@/lib/utils";
+
+interface ProcessSheetProps {
+  children?: React.ReactNode;
+  variants?: "default" | "outline" | "ghost";
+}
+
+export function ProcessSheet(props: ProcessSheetProps) {
+  const { children, variants } = props;
+
+  const { sheetOpen, setSheetOpen, upload, download } = useAkashaStore();
+  const { t } = useTranslation();
+
+  const uploads = useMemo(() => {
+    return upload.queue.length + (upload.current ? 1 : 0);
+  }, [upload]);
+
+  const downloads = useMemo(() => {
+    return download.queue.length + (download.current ? 1 : 0);
+  }, [download]);
+
+  const total = useMemo(() => {
+    return uploads + downloads;
+  }, [uploads, downloads]);
+
+  const getProgressMessage = (process: CurrentProcess): string => {
+    switch (process.status) {
+      case "creating-directory":
+        return `디렉토리 생성중 (${process.processedItems}/${process.totalItems})`;
+      case "hash-calculation":
+        return `해시 계산중 (${process.processedItems}/${process.totalItems})`;
+      case "uploading":
+        return `업로드중 (${process.processedItems}/${process.totalItems})`;
+      case "paused":
+        return "일시정지됨";
+      case "completed":
+        return "완료됨";
+      case "failed":
+        return `실패: ${process.error || "알 수 없는 오류"}`;
+      default:
+        return "대기중";
+    }
+  };
+
+  return (
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      {children ? (
+        <SheetTrigger asChild>{children}</SheetTrigger>
+      ) : variants ? (
+        <SheetTrigger className={cn(buttonVariants({ variant: variants, size: "icon" }))}>
+          {total ? (
+            <Loader2Icon className="h-full w-full animate-spin" />
+          ) : (
+            <ArrowUpDownIcon className="h-full w-full" />
+          )}
+        </SheetTrigger>
+      ) : (
+        <SheetTrigger className="flex flex-row items-center justify-center rounded-lg p-2 font-semibold text-muted-foreground transition-colors hover:text-primary">
+          {total ? (
+            <Loader2Icon className="h-full w-full animate-spin" />
+          ) : (
+            <ArrowUpDownIcon className="h-full w-full" />
+          )}
+        </SheetTrigger>
+      )}
+
+      <SheetContent className="h-full" aria-describedby={undefined}>
+        <SheetHeader>
+          <SheetTitle>
+            {t("drive.ui.transfers")} ({total})
+          </SheetTitle>
+          <div className="flex grow">
+            <div className="flex max-h-[70vh] w-full flex-col gap-4 overflow-y-auto">
+              {upload.current && (
+                <div className="flex w-full flex-col gap-2 border-b pb-4 last:border-b-0">
+                  <div className="flex w-full flex-row items-center justify-between gap-4">
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="flex aspect-square w-10 items-center justify-center rounded-md bg-secondary p-1">
+                        {upload.current.directories && upload.current.directories.length > 0 ? (
+                          <FolderIcon className="h-6 w-6 shrink-0 object-cover" />
+                        ) : (
+                          <FileIcon className="h-6 w-6 shrink-0 object-cover" />
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="line-clamp-1 break-all text-ellipsis">
+                          {upload.current.name}
+                        </p>
+                        <p className="line-clamp-1 text-xs break-all text-ellipsis text-muted-foreground">
+                          {formatSize(upload.current.size)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-row gap-1">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-transparent bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden">
+                        <LoaderIcon className="animate-spin" size={12} />
+                        {getProgressMessage(upload.current)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {upload.current.status === "uploading" &&
+                    upload.current.totalBytes !== undefined && (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span></span>
+                          <span>{formatSize(upload.current.uploadBytesPerSec)}/s</span>
+                        </div>
+                      </div>
+                    )}
+
+                  {upload.current.error && (
+                    <p className="text-sm text-destructive">{upload.current.error}</p>
+                  )}
+                </div>
+              )}
+
+              {download.current && (
+                <div className="flex w-full flex-col gap-2 border-b pb-4 last:border-b-0">
+                  <div className="flex w-full flex-row items-center justify-between gap-4">
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="flex aspect-square w-10 items-center justify-center rounded-md bg-secondary">
+                        <button
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+                          onClick={() => {
+                            if (download.current) {
+                              akasha.DLProcess.CancelDownload(download.current.pid);
+                            } else {
+                              toast.warning(
+                                "현재 중지하려는 다운로드가 current 상태에 있지 않습니다",
+                              );
+                            }
+                          }}
+                        >
+                          <CircleXIcon />
+                        </button>
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="line-clamp-1 break-all text-ellipsis">
+                          {download.current.name}
+                        </p>
+                        <p className="line-clamp-1 text-xs break-all text-ellipsis text-muted-foreground">
+                          {formatSize(download.current.totalSize)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-row gap-1">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-transparent bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden">
+                        <LoaderIcon className="animate-spin" size={12} />
+                        {formatSize(download.current.downloadedSize)}/
+                        {formatSize(download.current.totalSize)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Progress value={download.current.progress} className="h-1" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span></span>
+                      {download.current.downloadBytesPerSec && (
+                        <span>{formatSize(download.current.downloadBytesPerSec)}/s</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {upload.queue.map((queue) => (
+                <div
+                  key={queue.pid}
+                  className="flex w-full flex-col gap-2 border-b pb-4 last:border-b-0"
+                >
+                  <div className="flex w-full flex-row items-center justify-between gap-4">
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="flex aspect-square w-10 items-center justify-center rounded-md bg-secondary">
+                        {queue.directories && queue.directories.length > 0 ? (
+                          <FolderIcon />
+                        ) : (
+                          <FileIcon />
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="line-clamp-1 break-all text-ellipsis">{queue.name}</p>
+                        <p className="line-clamp-1 text-xs break-all text-ellipsis text-muted-foreground">
+                          {formatSize(queue.size)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-row gap-1">
+                      <button
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+                        onClick={() => {
+                          akasha.ULProcess.CancelUpload(queue.pid);
+                        }}
+                        tabIndex={-1}
+                      >
+                        <CircleXIcon />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {download.queue.map((queue) => (
+                <div
+                  key={queue.pid}
+                  className="flex w-full flex-col gap-2 border-b pb-4 last:border-b-0"
+                >
+                  <div className="flex w-full flex-row items-center justify-between gap-4">
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="flex aspect-square w-10 items-center justify-center rounded-md bg-secondary">
+                        <DownloadIcon />
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="line-clamp-1 break-all text-ellipsis">{queue.name}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {total === 0 && (
+                <div className="flex w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <ArrowUpDownIcon />
+                  <p className="text-base">{t("drive.ui.process_sheet.no_transfer_yet")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetHeader>
+      </SheetContent>
+    </Sheet>
+  );
+}

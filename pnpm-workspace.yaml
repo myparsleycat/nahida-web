@@ -1,0 +1,6 @@
+allowBuilds:
+    "@sentry/cli": true
+    cbor-extract: true
+    esbuild: true
+    sharp: true
+    workerd: true
