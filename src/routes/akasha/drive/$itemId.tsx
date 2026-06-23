@@ -123,8 +123,8 @@ function RouteComponent() {
     return (
       <>
         <div className="flex h-full w-full flex-col select-none">
-          <div className="flex h-14 w-full items-center border-b p-3">
-            <div className="flex-1">
+          <div className="flex min-h-14 w-full flex-wrap items-center gap-y-1 border-b p-3 pl-11 md:h-14 md:flex-nowrap md:pl-3">
+            <div className="min-w-0 flex-1">
               <AkashaBreadcrumb itemId={itemId} ancestors={query.data.ancestors} />
             </div>
 

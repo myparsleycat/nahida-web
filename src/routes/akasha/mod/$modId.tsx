@@ -13,7 +13,9 @@ import { AkashaModContents } from "@/components/akasha/mod-finder";
 import { AkashaModInfo, Bottom } from "@/components/akasha/mod-info";
 import { AkashaModPwdProtect } from "@/components/akasha/mod-pwd-protect";
 import { Center, ServerCrash, AliceLoader, Random1619 } from "@/components/common";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import ModContext from "@/context/ModContext";
+import { useIsMobileWidth } from "@/hooks/use-mobile";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
 import { eden } from "@/lib/eden";
 import { base64url, cn } from "@/lib/utils";
@@ -87,9 +89,10 @@ function RouteComponent() {
   const { status, errTxt, modData, sig, preview } = Route.useLoaderData();
   const { modId } = Route.useParams();
   const navi = useNavigate();
+  const isMobile = useIsMobileWidth();
 
   const isInitialCollectionSet = useRef(true);
-  const [isOpenInfo, setOpenInfo] = useState(true);
+  const [isOpenInfo, setOpenInfo] = useState(false);
   const [itemId, setItemId] = useState("");
   const [collectionId, setCollectionId] = useState("");
 
@@ -224,19 +227,30 @@ function RouteComponent() {
           )}
         </div>
 
-        <div
-          className={cn(
-            "bg-material-medium z-10 flex min-h-0 shrink-0 flex-col overflow-hidden transition-all duration-500",
-            // isOpenInfo && media.lg ? "w-80" : "w-0"
-            modData ? "w-80" : "w-0",
-          )}
-        >
-          {modData && <AkashaModInfo className="min-h-0 flex-1" data={modData} />}
+        {isMobile ? (
+          <Sheet open={isOpenInfo} onOpenChange={setOpenInfo}>
+            <SheetContent side="right" className="flex w-80 flex-col p-0 sm:max-w-sm">
+              <SheetTitle className="sr-only">Mod info</SheetTitle>
+              {modData && <AkashaModInfo className="min-h-0 flex-1" data={modData} />}
+              <div className="flex w-full shrink-0 items-center justify-center">
+                <Bottom />
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <div
+            className={cn(
+              "bg-material-medium z-10 flex min-h-0 shrink-0 flex-col overflow-hidden transition-all duration-500",
+              modData ? "w-80" : "w-0",
+            )}
+          >
+            {modData && <AkashaModInfo className="min-h-0 flex-1" data={modData} />}
 
-          <div className="flex w-full shrink-0 items-center justify-center">
-            <Bottom />
+            <div className="flex w-full shrink-0 items-center justify-center">
+              <Bottom />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </ModContext.Provider>
   );

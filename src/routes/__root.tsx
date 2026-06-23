@@ -5,9 +5,11 @@ import { useTranslation } from "react-i18next";
 import { AliceLoader, Center } from "@/components/common";
 import { CustomCursor } from "@/components/custom-cursor";
 import { AnnouncementStack, useAnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { MobileSidePanel } from "@/components/layout/MobileSidePanel";
 import { SidePanel } from "@/components/layout/SidePanel";
 import { buttonVariants } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { useIsMobileWidth } from "@/hooks/use-mobile";
 import { eden } from "@/lib/eden";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +48,7 @@ function RootComponent() {
 
   const isWorking = query.isLoading || query.isFetching;
   const { announcements, dismiss } = useAnnouncementBanner();
+  const isMobile = useIsMobileWidth();
 
   if (query.isLoading) {
     return (
@@ -89,7 +92,7 @@ function RootComponent() {
             <AnnouncementStack announcements={announcements} onDismiss={dismiss} />
           )}
           <main className="flex min-h-0 w-full flex-1 overflow-hidden">
-            <SidePanel />
+            {isMobile ? <MobileSidePanel /> : <SidePanel />}
 
             <div className="flex-1 overflow-y-auto">
               <Outlet />

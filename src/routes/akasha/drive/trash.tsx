@@ -145,7 +145,7 @@ function RouteComponent() {
       return (
         <div className="flex h-full w-full flex-col select-none">
           <div className="flex flex-row text-sm">
-            <div className="flex h-8 w-full flex-row items-center gap-3 px-3 select-none">
+            <div className="flex h-12 w-full flex-row items-center gap-3 px-3 pl-11 select-none md:h-8 md:pl-3">
               <div
                 className="flex grow cursor-pointer flex-row items-center"
                 onClick={() => handleSort("NAME")}

@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { FolderIcon } from "lucide-react";
+import { FolderIcon, InfoIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,9 +14,11 @@ import {
   ContextMenuProvider,
   type Ancestor,
 } from "@/components/page/akasha";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
 import { useContentDrag, useContentView, useHandler } from "@/hooks/akasha";
+import { useIsMobileWidth } from "@/hooks/use-mobile";
 import { parseModPath } from "@/lib/akasha/services/mod-drive/common";
 import { getChosung, getSearchScore } from "@/lib/sejong";
 import { commonSort } from "@/lib/utils";
@@ -41,7 +43,8 @@ export function AkashaModContents(props: AkashaModBaseProps) {
 
   const drag = useContentDrag();
   const { onDragEnter, onDragLeave, onDragOver, onDrop } = useHandler();
-  const { modQuery, sig, collectionId, setItemId } = useModContext();
+  const { modQuery, sig, collectionId, setItemId, setOpenInfo } = useModContext();
+  const isMobile = useIsMobileWidth();
 
   const rawContents = useMemo(() => {
     return commonSort(children, view.sortType);
@@ -75,7 +78,7 @@ export function AkashaModContents(props: AkashaModBaseProps) {
 
   return (
     <div className="flex h-full flex-col select-none">
-      <div className="flex h-14 w-full items-center border-b p-3">
+      <div className="flex min-h-14 w-full flex-wrap items-center gap-y-1 border-b p-3 pl-11 md:h-14 md:flex-nowrap md:pl-3">
         <div className="min-w-0 flex-1">
           {/* <AkashaModBreadcrumb
             itemId={content.id}
@@ -83,6 +86,18 @@ export function AkashaModContents(props: AkashaModBaseProps) {
           /> */}
           <AkashaModDDBreadcrumb itemId={content.id} ancestors={ancestors} />
         </div>
+
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-1 shrink-0 md:hidden"
+            onClick={() => setOpenInfo(true)}
+            aria-label="Open mod info"
+          >
+            <InfoIcon />
+          </Button>
+        )}
 
         <AkashaHeadButtons of="mod" content={content} modQuery={modQuery} />
       </div>

@@ -34,11 +34,12 @@ function BreadcrumbInner({
   }, [ancestors]);
 
   return (
-    <div className="flex">
+    <div className="flex min-w-0">
       {ancestors.length > 1 && (
         <Button
           size="icon"
           variant="ghost"
+          className="shrink-0"
           onClick={() => {
             if (!current?.parentId) return;
             onNavigate(current.parentId);
@@ -49,10 +50,10 @@ function BreadcrumbInner({
       )}
 
       <DropdownMenu>
-        <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost" }))}>
-          <FolderIcon className="mr-2 h-4 w-4" />
-          {current?.name}
-          <ChevronDownIcon />
+        <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost" }), "min-w-0")}>
+          <FolderIcon className="mr-2 h-4 w-4 shrink-0" />
+          <span className="min-w-0 truncate">{current?.name}</span>
+          <ChevronDownIcon className="shrink-0" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           {[...ancestors].reverse().map((ancestor) => (

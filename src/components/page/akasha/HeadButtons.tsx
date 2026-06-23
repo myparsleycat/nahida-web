@@ -12,6 +12,7 @@ import {
   ListIcon,
   Loader2Icon,
   MonitorIcon,
+  PlusIcon,
   SearchIcon,
   UploadIcon,
 } from "lucide-react";
@@ -76,6 +77,7 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
   const dialog = useDialogStore();
   const view = useContentView();
   const { data: session } = useSession();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   async function handleDownload() {
     if (of === "link" && !link) return;
@@ -100,124 +102,157 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
   }
 
   return (
-    <div className="ml-4 flex shrink-0 gap-3">
-      <div className="relative w-full">
-        <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
-        <Input
-          className="w-50 pl-8 dark:bg-transparent"
-          placeholder={t("drive.ui.search_in_dir_placeholder")}
-          value={view.searchInDirQuery}
-          onValueChange={view.setSearchInDirQuery}
-          onFocus={() => view.setFocusSearchInputState(true)}
-          onBlur={() => view.setFocusSearchInputState(false)}
-        />
-      </div>
+    <>
+      <div className="flex shrink-0 items-center gap-1.5 md:ml-4 md:gap-3">
+        <div className="relative hidden w-full md:block">
+          <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <Input
+            className="w-50 pl-8 dark:bg-transparent"
+            placeholder={t("drive.ui.search_in_dir_placeholder")}
+            value={view.searchInDirQuery}
+            onValueChange={view.setSearchInDirQuery}
+            onFocus={() => view.setFocusSearchInputState(true)}
+            onBlur={() => view.setFocusSearchInputState(false)}
+          />
+        </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => {
-          if (view.layout === "grid") {
-            view.setLayout("list");
-          } else {
-            view.setLayout("grid");
-          }
-        }}
-      >
-        {view.layout === "grid" ? <ListIcon /> : view.layout === "list" ? <LayoutGridIcon /> : null}
-      </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setSearchOpen((v) => !v)}
+          aria-label={t("drive.ui.search_in_dir_placeholder")}
+        >
+          <SearchIcon />
+        </Button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className={buttonVariants({ variant: "ghost", size: "icon" })}>
-          <DownloadIcon />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>{t("g.download")}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleDownload}>
-              <GlobeIcon size={18} />
-              {t("g.browser_download")}
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              onClick={async () => {
-                if (of === "mod") {
-                  await startDownloadForDesktop({
-                    items: [content],
-                    suggestedName: modQuery?.mod.title,
-                  });
-                } else if (of === "drive") {
-                  await startAkashaDownloadForDesktop({ item: content });
-                } else {
-                  await startAkashaDownloadForDesktop({ item: content, link });
-                }
-              }}
-            >
-              <MonitorIcon size={18} />
-              {t("g.desktop_download")}
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-
-          <DropdownMenuSeparator />
-
-          {session && of !== "drive" && (
-            <DropdownMenuItem asChild>
-              <ImportToMyDriveDialog of={of} content={content} link={link} />
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {session && of !== "mod" && (
         <Button
           variant="ghost"
           size="icon"
           onClick={() => {
-            dialog.setOpen("notiDialog", true, {
-              id: content.id,
-              ...(link && {
-                link: {
-                  id: link.linkId,
-                  token: link.token,
-                },
-              }),
-            });
+            if (view.layout === "grid") {
+              view.setLayout("list");
+            } else {
+              view.setLayout("grid");
+            }
           }}
         >
-          <BellIcon />
+          {view.layout === "grid" ? (
+            <ListIcon />
+          ) : view.layout === "list" ? (
+            <LayoutGridIcon />
+          ) : null}
         </Button>
-      )}
 
-      {of === "link" && <ProcessSheet variants="ghost" />}
-
-      {of === "drive" && (
         <DropdownMenu>
-          <DropdownMenuTrigger className={buttonVariants({ variant: "ghost" })}>
-            {t("g.make_new")}
+          <DropdownMenuTrigger className={buttonVariants({ variant: "ghost", size: "icon" })}>
+            <DownloadIcon />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem
-              className="cursor-pointer gap-3"
-              onClick={() => dialog.setOpen("createDirDialog", true)}
-            >
-              <FolderIcon size={20} />
-              {t("drive.ui.new_dir")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer gap-3">
-                <UploadIcon size={20} />
-                {t("drive.upload_dir")}
+              <DropdownMenuLabel>{t("g.download")}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={handleDownload}>
+                <GlobeIcon size={18} />
+                {t("g.browser_download")}
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer gap-3">
-                <UploadIcon size={20} />
-                {t("drive.upload_file")}
+
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (of === "mod") {
+                    await startDownloadForDesktop({
+                      items: [content],
+                      suggestedName: modQuery?.mod.title,
+                    });
+                  } else if (of === "drive") {
+                    await startAkashaDownloadForDesktop({ item: content });
+                  } else {
+                    await startAkashaDownloadForDesktop({ item: content, link });
+                  }
+                }}
+              >
+                <MonitorIcon size={18} />
+                {t("g.desktop_download")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            {session && of !== "drive" && (
+              <DropdownMenuItem asChild>
+                <ImportToMyDriveDialog of={of} content={content} link={link} />
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {session && of !== "mod" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              dialog.setOpen("notiDialog", true, {
+                id: content.id,
+                ...(link && {
+                  link: {
+                    id: link.linkId,
+                    token: link.token,
+                  },
+                }),
+              });
+            }}
+          >
+            <BellIcon />
+          </Button>
+        )}
+
+        {of === "link" && <ProcessSheet variants="ghost" />}
+
+        {of === "drive" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:h-9 md:px-3")}
+            >
+              <PlusIcon className="md:hidden" />
+              <span className="hidden md:inline">{t("g.make_new")}</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                className="cursor-pointer gap-3"
+                onClick={() => dialog.setOpen("createDirDialog", true)}
+              >
+                <FolderIcon size={20} />
+                {t("drive.ui.new_dir")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem className="cursor-pointer gap-3">
+                  <UploadIcon size={20} />
+                  {t("drive.upload_dir")}
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer gap-3">
+                  <UploadIcon size={20} />
+                  {t("drive.upload_file")}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {searchOpen && (
+        <div className="relative w-full md:hidden">
+          <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <Input
+            className="w-full pl-8 dark:bg-transparent"
+            placeholder={t("drive.ui.search_in_dir_placeholder")}
+            value={view.searchInDirQuery}
+            onValueChange={view.setSearchInDirQuery}
+            onFocus={() => view.setFocusSearchInputState(true)}
+            onBlur={() => view.setFocusSearchInputState(false)}
+          />
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

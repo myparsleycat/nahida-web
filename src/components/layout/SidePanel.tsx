@@ -27,44 +27,66 @@ import { cleanupOldOpfsDirectories } from "@/lib/opfs";
 import { cn } from "@/lib/utils";
 
 export function SidePanel() {
-  const { data: session } = useSession();
-  const { t } = useTranslation();
-  const driveRootId = session?.drive?.rootId;
-
   useEffect(() => {
     cleanupOldOpfsDirectories();
   }, []);
 
   return (
     <div className="z-10 flex h-full flex-col space-y-2 border-r bg-background p-2 shadow-xl">
-      <Link to="/" className={buttonVariants({ variant: "ghost", size: "icon" })}>
+      <SidePanelContent />
+    </div>
+  );
+}
+
+interface SidePanelContentProps {
+  labeled?: boolean;
+}
+
+export function SidePanelContent(props: SidePanelContentProps) {
+  const { labeled = false } = props;
+  const { data: session } = useSession();
+  const { t } = useTranslation();
+  const driveRootId = session?.drive?.rootId;
+
+  const linkClass = labeled
+    ? cn(buttonVariants({ variant: "ghost" }), "flex w-full justify-start gap-3 px-3")
+    : buttonVariants({ variant: "ghost", size: "icon" });
+
+  return (
+    <>
+      <Link to="/" className={linkClass}>
         <LeafyGreenIcon />
+        {labeled && <span>{t("g.home")}</span>}
       </Link>
 
-      <Link to="/akasha/mod/create" className={buttonVariants({ variant: "ghost", size: "icon" })}>
+      <Link to="/akasha/mod/create" className={linkClass}>
         <UploadIcon />
+        {labeled && <span>{t("g.upload")}</span>}
       </Link>
 
       {driveRootId && (
-        <Link
-          to="/akasha/drive/$itemId"
-          params={{ itemId: driveRootId }}
-          className={buttonVariants({ variant: "ghost", size: "icon" })}
-        >
+        <Link to="/akasha/drive/$itemId" params={{ itemId: driveRootId }} className={linkClass}>
           <CloudyIcon />
+          {labeled && <span>{t("g.nahida_drive")}</span>}
         </Link>
       )}
 
       {session ? (
         <DropdownMenu>
           <DropdownMenuTrigger
-            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "overflow-hidden")}
+            className={cn(
+              labeled
+                ? cn(buttonVariants({ variant: "ghost" }), "flex w-full justify-start gap-3 px-3")
+                : cn(buttonVariants({ variant: "ghost", size: "icon" }), "overflow-hidden"),
+              labeled && "overflow-hidden",
+            )}
           >
             <img
               referrerPolicy="no-referrer"
               src={session.user.image ? session.user.image : "/sunglasshida.jpg"}
               alt={session.user.name}
             />
+            {labeled && <span className="truncate text-sm">{session.user.name}</span>}
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuGroup>
@@ -101,21 +123,22 @@ export function SidePanel() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Link
-          to="/sign-in"
-          search={{ redirect: window.location.href }}
-          className={buttonVariants({ variant: "ghost", size: "icon" })}
-        >
+        <Link to="/sign-in" search={{ redirect: window.location.href }} className={linkClass}>
           <LogInIcon />
+          {labeled && <span>{t("g.login")}</span>}
         </Link>
       )}
 
       <Separator />
 
-      <AnimatedThemeToggler className={buttonVariants({ variant: "ghost", size: "icon" })} />
+      <div className={cn("flex items-center gap-3", labeled ? "px-3" : "")}>
+        <AnimatedThemeToggler className={buttonVariants({ variant: "ghost", size: "icon" })} />
+        {labeled && <span className="text-sm">{t("g.theme")}</span>}
+      </div>
 
-      <Link to="/setting" className={buttonVariants({ variant: "ghost", size: "icon" })}>
+      <Link to="/setting" className={linkClass}>
         <SettingsIcon />
+        {labeled && <span>{t("g.settings")}</span>}
       </Link>
 
       <a
@@ -123,11 +146,13 @@ export function SidePanel() {
         target="_blank"
         className={cn(
           buttonVariants({ variant: "ghost", size: "icon" }),
+          labeled && "flex w-full justify-start gap-3 px-3",
           "overflow-hidden rounded-lg",
         )}
       >
         <img src="/icon/Pixiv_FANBOX_(Icon).svg" />
+        {labeled && <span className="text-sm">{t("g.fanbox")}</span>}
       </a>
-    </div>
+    </>
   );
 }
