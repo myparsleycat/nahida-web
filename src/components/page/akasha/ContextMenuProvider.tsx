@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import {
   BellIcon,
-  CopyIcon,
+  Copy as CopyIcon,
   DeleteIcon,
   EyeIcon,
   FolderIcon,
@@ -103,7 +103,7 @@ interface ContextMenuContentSnippetProps {
 
 function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
   const { itemId } = props;
-  const { selectedItems, setSelectedItems } = useContentSelection();
+  const { selectedItems, setSelectedItems, setCopyOrCuts } = useContentSelection();
   const dialog = useDialogStore();
   const { t } = useTranslation();
   const { queryClient } = useRouteContext({ from: "__root__" });
@@ -161,6 +161,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
 
           <DropdownMenuGroup>
             <DropdownMenuLabel>{t("g.download")}</DropdownMenuLabel>
+
             <ContextMenuItem
               className="gap-x-2"
               onClick={() => akasha.item(selectedItems[0]).download()}
@@ -223,6 +224,25 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
           </ContextMenuItem>
           <ContextMenuSeparator />
 
+          <ContextMenuItem
+            className="gap-x-2"
+            onClick={() => {
+              if (!selectedItems || selectedItems.length === 0) return;
+              setCopyOrCuts("copy", selectedItems);
+              if (selectedItems.length === 1) {
+                toast.info(`"${selectedItems[0].name}"이(가) 복사 상태로 설정되었습니다`);
+              } else {
+                toast.info(
+                  `"${selectedItems[0].name}"외 ${
+                    selectedItems.length - 1
+                  }개가 복사 상태로 설정되었습니다.`,
+                );
+              }
+            }}
+          >
+            <CopyIcon size={18} />
+            {t("drive.ui.context_menu.copy")}
+          </ContextMenuItem>
           <ContextMenuItem className="gap-x-2" onClick={() => akasha.copyId(selectedItems[0])}>
             <CopyIcon size={18} />
             {t("drive.ui.context_menu.copy_id")}

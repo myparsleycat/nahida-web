@@ -158,8 +158,17 @@ export function HandlerProvider(props: HandlerProviderProps) {
 
       if ((e.ctrlKey || e.metaKey) && e.key === "c") {
         e.preventDefault();
-        if (selectedItems.length >= 1) {
-          toast.warning("복사는 지원하지 않습니다");
+        if (selectedItems.length === 0) return;
+
+        setCopyOrCuts("copy", selectedItems);
+        if (selectedItems.length === 1) {
+          toast.info(`"${selectedItems[0].name}"이(가) 복사 상태로 설정되었습니다`);
+        } else {
+          toast.info(
+            `"${selectedItems[0].name}"외 ${
+              selectedItems.length - 1
+            }개가 복사 상태로 설정되었습니다.`,
+          );
         }
       }
 
@@ -201,6 +210,24 @@ export function HandlerProvider(props: HandlerProviderProps) {
               },
               error: (err: any) =>
                 `${t("#.moveItems.toast-promise.error", { values: { error: err.message } })}`,
+            });
+          } else if (copyOrCuts.action === "copy") {
+            const itemsToCopy = [...copyOrCuts.items];
+
+            const promise = mutation.copyMutation.mutateAsync({
+              items: itemsToCopy,
+              targetId: param.itemId,
+            });
+
+            toast.promise(promise, {
+              loading: "복사 중...",
+              success: () => {
+                queryClient.refetchQueries({
+                  queryKey: ["akasha", "drive", "item"],
+                });
+                return "복사되었습니다";
+              },
+              error: (err: any) => `복사 실패: ${err.message}`,
             });
           }
         } else {

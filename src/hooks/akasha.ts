@@ -107,6 +107,11 @@ interface moveMutationProps {
     current: string;
 }
 
+interface copyMutationProps {
+    items: Content[];
+    targetId: string;
+}
+
 export function useAkashaMutation() {
     const moveMutation = useMutation({
         mutationKey: ["akasha", "drive", "move"],
@@ -126,8 +131,27 @@ export function useAkashaMutation() {
         },
     });
 
+    const copyMutation = useMutation({
+        mutationKey: ["akasha", "drive", "copy"],
+        mutationFn: async (props: copyMutationProps) => {
+            const { items, targetId } = props;
+            const uuids = items.map((item) => item.id);
+
+            const { data, error } = await eden.akasha.content.copy_many.post({
+                uuids,
+                target: targetId,
+            });
+            if (error) {
+                throw new Error(error.value.toString());
+            }
+
+            return data;
+        },
+    });
+
     return {
         moveMutation,
+        copyMutation,
     };
 }
 
