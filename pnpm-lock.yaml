@@ -26,6 +26,9 @@ importers:
       '@marsidev/react-turnstile':
         specifier: ^1.5.3
         version: 1.5.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@nahida/sdk':
+        specifier: github:myparsleycat/nahida-sdk#semver:v0.1.2
+        version: https://codeload.github.com/myparsleycat/nahida-sdk/tar.gz/9c275412e404c255735a4544c12e0b17c60bc15e
       '@nsmr/pixelart-react':
         specifier: ^2.0.0
         version: 2.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -152,6 +155,9 @@ importers:
       es-toolkit:
         specifier: ^1.47.0
         version: 1.47.0
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
@@ -1194,6 +1200,11 @@ packages:
     resolution: {integrity: sha512-2Z0FATFHaoYJ8b+Y4y4Hgfn3FRFwuU5zRrk+9dFWp4uGAdHGqVEdP7HP+gLA3X469KXHmfupJaUbKo1b/aDKIg==}
     peerDependencies:
       three: '>= 0.159.0'
+
+  '@nahida/sdk@https://codeload.github.com/myparsleycat/nahida-sdk/tar.gz/9c275412e404c255735a4544c12e0b17c60bc15e':
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/myparsleycat/nahida-sdk/tar.gz/9c275412e404c255735a4544c12e0b17c60bc15e}
+    version: 0.1.2
+    engines: {node: '>=20'}
 
   '@napi-rs/wasm-runtime@1.1.4':
     resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
@@ -6136,6 +6147,10 @@ snapshots:
     dependencies:
       promise-worker-transferable: 1.0.4
       three: 0.184.0
+
+  '@nahida/sdk@https://codeload.github.com/myparsleycat/nahida-sdk/tar.gz/9c275412e404c255735a4544c12e0b17c60bc15e':
+    dependencies:
+      '@zip.js/zip.js': 2.8.26
 
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:

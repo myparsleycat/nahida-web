@@ -25,7 +25,7 @@ const processStreamedData = async (jsonString: string) => {
 let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
 self.onmessage = async (event) => {
-    const { url, token, fpHash, type: msgType } = event.data;
+    const { url, token, fpHash, storageVersion, type: msgType } = event.data;
 
     if (msgType === "abort") {
         if (activeReader) {
@@ -44,6 +44,7 @@ self.onmessage = async (event) => {
                 Accept: "text/event-stream",
                 ...(fpHash && { "X-FPH": fpHash }),
                 ...(token && { "nhd-link-token": token }),
+                ...(storageVersion && { "x-akasha-storage-version": storageVersion }),
             },
             credentials: "include",
         });
@@ -95,6 +96,11 @@ self.onmessage = async (event) => {
                             case "files": {
                                 const filesChunk = await processStreamedData(eventData);
                                 self.postMessage({ type: "files", payload: filesChunk });
+                                break;
+                            }
+                            case "bundles": {
+                                const bundlesChunk = await processStreamedData(eventData);
+                                self.postMessage({ type: "bundles", payload: bundlesChunk });
                                 break;
                             }
                             case "metadata": {

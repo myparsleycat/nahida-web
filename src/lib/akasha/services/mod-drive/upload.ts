@@ -13,6 +13,7 @@ import { modStore } from "@/stores/akasha-mod.store";
 
 import { isPreviewFile, reverseFileContent } from "../drive-common";
 import { collectDirectoryStructure, collectFiles, isNameConflict } from "../fs";
+import { uploadResourceBundles } from "./bundle-upload";
 
 const CHUNK_SIZE = 100;
 
@@ -131,14 +132,9 @@ async function prepareUploadData(
     }
 
     const collectedFiles = await Promise.all(
-        entries.map((entry) => collectFiles(entry, undefined, [".blend"])),
+        entries.map((entry) => collectFiles(entry, undefined, [".blend"], true)),
     );
     const allFiles = collectedFiles.flat();
-
-    const largeFile = allFiles.find((v) => v.size > 150 * 1000 * 1000);
-    if (largeFile) {
-        throw new Error(`${largeFile.name} 파일이 최대 파일 크기 제한인 150MiB를 초과합니다.`);
-    }
 
     const directories = entries.filter(
         (entry): entry is FileSystemDirectoryEntry => entry.isDirectory,
@@ -270,7 +266,9 @@ async function handleFileUploads(
             throw new Error(`[create_files chunk failed] ${error.value.toString()}`);
         }
 
-        const serverNeedsSha256 = new Set(data.map((item) => item.form.sha256));
+        const serverNeedsSha256 = new Set(
+            (data as { form: { sha256: string } }[]).map((item) => item.form.sha256),
+        );
 
         const filesToUpload: FinalFile[] = [];
         let createdCount = 0;
@@ -356,7 +354,7 @@ async function uploadFile({ collectionId, sig, file }: uploadFileProps) {
                 );
             }
 
-            if (error.status === 403) {
+            if ((error as { status: number }).status === 403) {
                 const reversedBlob: Blob = await reverseFileContent(fileToUpload);
                 fileToUpload = new File([reversedBlob], name);
             }
@@ -446,15 +444,45 @@ export async function startUpload(props: startUploadProps) {
             const finalFiles = await calculateHashes(parentIdProcessedFiles);
 
             setStatus("transmitting");
-            await handleFileUploads(
-                finalFiles,
-                { collectionId, sig },
-                { setSentItems, setSentBytes, setProgress },
-                totalSize,
-            );
+            let bundledItems = 0;
+            let bundledBytes = 0;
+            let standaloneItems = 0;
+            let standaloneBytes = 0;
+            const result = await uploadResourceBundles({
+                files: finalFiles,
+                collectionId,
+                sig,
+                sessionId: crypto.randomUUID(),
+                uploadStandalone: async (files) => {
+                    await handleFileUploads(
+                        files,
+                        { collectionId, sig },
+                        { setSentItems, setSentBytes, setProgress },
+                        totalSize,
+                    );
+                    standaloneItems = files.length;
+                    standaloneBytes = sumBy(files, (file) => file.size);
+                },
+                progress: (files, bytes) => {
+                    bundledItems += files;
+                    bundledBytes += bytes;
+                    setSentItems(standaloneItems + bundledItems);
+                    setSentBytes(standaloneBytes + bundledBytes);
+                    setProgress(Math.round(((standaloneBytes + bundledBytes) / totalSize) * 100));
+                },
+            });
+            setTotalItems(result.totalFiles);
+            setTotalBytes(result.totalBytes);
+            setSentItems(result.totalFiles);
+            setSentBytes(result.totalBytes);
+            setProgress(100);
+            if (result.diagnostics.length > 0) {
+                console.warn("Akasha bundle diagnostics", result.diagnostics);
+                toast.warning(`INI 리소스 경고 ${result.diagnostics.length}건을 확인해주세요.`);
+            }
         }
-    } catch (e: any) {
-        toast.error(e.message);
+    } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e));
         throw e;
     } finally {
         await delay(1000);

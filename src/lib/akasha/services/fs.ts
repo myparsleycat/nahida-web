@@ -52,13 +52,14 @@ export async function collectFiles(
     entry: FileSystemEntry,
     basePath: string = "",
     additionalExt: string[] = [],
+    includeAll: boolean = false,
 ): Promise<FileInfoComponent[]> {
     if (entry.isFile) {
         const fileEntry = entry as FileSystemFileEntry;
         return new Promise((resolve) => {
             fileEntry.file((file) => {
                 const path = basePath ? `${basePath}/${fileEntry.name}` : fileEntry.name;
-                if (!validateExt(fileEntry.name, additionalExt)) {
+                if (!includeAll && !validateExt(fileEntry.name, additionalExt)) {
                     resolve([]);
                     return;
                 }
@@ -85,7 +86,7 @@ export async function collectFiles(
         const newBasePath = basePath ? `${basePath}/${dirEntry.name}` : dirEntry.name;
 
         const collectedFiles = await Promise.all(
-            entries.map((entry) => collectFiles(entry, newBasePath)),
+            entries.map((entry) => collectFiles(entry, newBasePath, additionalExt, includeAll)),
         );
 
         return collectedFiles.flat();

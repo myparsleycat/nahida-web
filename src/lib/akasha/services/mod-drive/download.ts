@@ -9,6 +9,7 @@ import { globalStore } from "@/stores/global.store";
 
 import type { AkashaModData } from "../drive-types";
 
+import { countBundleEntries, downloadBundlesToOpfs } from "../bundle-download";
 import {
     startStreamingDownload,
     getModDownloadUrl,
@@ -99,7 +100,7 @@ export async function startDownloadForDesktop(props: StartDownloadForDesktopProp
         id: mod?.mod.id.toString() || "",
         data: prep.metadata,
         suggestedName: suggestedName || mod?.mod.title,
-        minVersion: "1.14.0",
+        minVersion: "2.50.0",
     });
 }
 
@@ -143,7 +144,7 @@ export async function startDownload(props: StartDownloadProps) {
         const prep = await prepareDownload(items[0].id, mod?.mod.title, items[0].name);
         directoryName = prep.directoryName;
         const { modRootHandle } = prep;
-        const { mtd, files, dirs, root, totalBytes } = prep.metadata;
+        const { mtd, files, bundles, dirs, root, totalBytes } = prep.metadata;
 
         const dirHandles = await createOpfsDirectories(dirs, root, modRootHandle);
 
@@ -160,7 +161,7 @@ export async function startDownload(props: StartDownloadProps) {
         }
 
         store.setStatus("transmitting");
-        store.setTotalItems(files.length);
+        store.setTotalItems(files.length + countBundleEntries(bundles));
         store.setTotalBytes(totalBytes);
 
         let downloadedBytes = 0;
@@ -187,7 +188,7 @@ export async function startDownload(props: StartDownloadProps) {
             speedBytesThisSecond = 0;
         }, 1000);
 
-        const results = await downloadFilesToOpfs({
+        const standaloneResults = await downloadFilesToOpfs({
             files,
             dirHandles,
             rootHandle: modRootHandle,
@@ -201,7 +202,21 @@ export async function startDownload(props: StartDownloadProps) {
             },
             useProxyFallback: true,
         });
+        const bundleResults = await downloadBundlesToOpfs({
+            bundles,
+            dirHandles,
+            rootHandle: modRootHandle,
+            abortSignal,
+            progress: {
+                ...progress,
+                fileCompleted: () => {
+                    downloadedCount++;
+                    store.setSentItems(downloadedCount);
+                },
+            },
+        });
 
+        const results = [...standaloneResults, ...bundleResults];
         const failedCount = results.filter((r) => r.status === "rejected").length;
         if (failedCount > 0) {
             results.forEach((r) => {

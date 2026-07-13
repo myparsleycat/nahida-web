@@ -8,12 +8,14 @@ import { eden2url } from "@/lib/eden";
 
 import type { OpfsDirInfo, OpfsFileInfo } from "./opfs-download";
 
+import { parseBundleChunk, type OpfsBundleInfo } from "./bundle-download";
 import sseWorker from "./sse.worker?worker";
 
 export interface StreamedMetadata {
     root: OpfsDirInfo;
     totalBytes: number;
     files: OpfsFileInfo[];
+    bundles: OpfsBundleInfo[];
     dirs: OpfsDirInfo[];
     mtd: {
         type: string;
@@ -33,6 +35,7 @@ export function startStreamingDownload(params: {
         const downloadData = {
             totalBytes: 0,
             files: [] as OpfsFileInfo[],
+            bundles: [] as OpfsBundleInfo[],
             dirs: [] as OpfsDirInfo[],
         };
         let rootDir: OpfsDirInfo | null = null;
@@ -64,6 +67,9 @@ export function startStreamingDownload(params: {
                 case "files":
                     downloadData.files.push(...payload);
                     break;
+                case "bundles":
+                    downloadData.bundles.push(...parseBundleChunk(payload));
+                    break;
                 case "metadata":
                     downloadData.totalBytes = payload.totalBytes;
                     rootDir = payload.root;
@@ -80,6 +86,7 @@ export function startStreamingDownload(params: {
                         root: rootDir,
                         totalBytes: downloadData.totalBytes,
                         files: downloadData.files,
+                        bundles: downloadData.bundles,
                         dirs: [rootDir, ...downloadData.dirs],
                         mtd,
                     });
@@ -103,6 +110,7 @@ export function startStreamingDownload(params: {
             url: url.toString(),
             token: headers?.["nhd-link-token"],
             fpHash: headers?.["X-FPH"],
+            storageVersion: headers?.["x-akasha-storage-version"],
         });
     });
 }
@@ -124,7 +132,7 @@ export function getModDownloadUrl(params: { itemId: string }) {
 }
 
 export function buildDriveSseHeaders(params: { token?: string }) {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { "x-akasha-storage-version": "2" };
     if (params.token) {
         headers["nhd-link-token"] = params.token;
     }
@@ -132,7 +140,7 @@ export function buildDriveSseHeaders(params: { token?: string }) {
 }
 
 export function buildModSseHeaders(params: { fpHash: string | null }) {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { "x-akasha-storage-version": "2" };
     if (params.fpHash) {
         headers["X-FPH"] = params.fpHash;
     }
@@ -142,7 +150,7 @@ export function buildModSseHeaders(params: { fpHash: string | null }) {
 export async function startDesktopDownload(params: {
     type: "live";
     id: string;
-    data: any;
+    data: StreamedMetadata;
     suggestedName?: string;
     link?: { linkId: string; token: string };
     minVersion: string;

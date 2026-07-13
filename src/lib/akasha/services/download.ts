@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { akashaStore } from "@/stores/akasha-queue.store";
 
+import { countBundleEntries, downloadBundlesToOpfs } from "./bundle-download";
 import {
     startStreamingDownload,
     getDriveDownloadUrl,
@@ -127,7 +128,7 @@ export async function processNextDownloadInQueue() {
             downloadedSize: 0,
             totalSize: downloadInfo.totalBytes,
             currentFile: 0,
-            totalFiles: downloadInfo.files.length,
+            totalFiles: downloadInfo.files.length + countBundleEntries(downloadInfo.bundles),
             progress: 0,
             downloadBytesPerSec: 0,
             download: {
@@ -195,7 +196,7 @@ export async function startDownload(params: {
         });
         directoryName = tempDirectoryName;
 
-        const { totalBytes, dirs, files, root, mtd } = download;
+        const { totalBytes, dirs, files, bundles, root, mtd } = download;
         const dirHandles = await createOpfsDirectories(dirs, root, rootHandle);
 
         const mtdContent = mtd
@@ -224,7 +225,7 @@ export async function startDownload(params: {
         }, 1000);
 
         try {
-            const results = await downloadFilesToOpfs({
+            const standaloneResults = await downloadFilesToOpfs({
                 files,
                 dirHandles,
                 rootHandle,
@@ -246,8 +247,32 @@ export async function startDownload(params: {
                     },
                 },
             });
+            const bundleResults = await downloadBundlesToOpfs({
+                bundles,
+                dirHandles,
+                rootHandle,
+                abortSignal,
+                progress: {
+                    updateDownloadedBytes: (bytes) => {
+                        downloadedBytes += bytes;
+                        store.updateCurrentDownloadedSize(downloadedBytes);
+                        throttledUpdateProgress(
+                            Math.min((downloadedBytes / Math.max(totalBytes, 1)) * 100, 100),
+                        );
+                    },
+                    updateSpeed: (bytes) => {
+                        speedBytesThisSecond += bytes;
+                    },
+                    fileCompleted: () => {
+                        downloadedCount++;
+                        store.updateDownloadedFilesCount(downloadedCount);
+                    },
+                },
+            });
 
-            const failedResults = results.filter((result) => result.status === "rejected");
+            const failedResults = [...standaloneResults, ...bundleResults].filter(
+                (result) => result.status === "rejected",
+            );
             if (failedResults.length > 0) {
                 console.error(
                     `${failedResults.length}개 파일 다운로드 실패:`,

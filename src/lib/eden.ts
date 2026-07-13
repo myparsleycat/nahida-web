@@ -32,6 +32,7 @@ const fetcher = (url: string | Request | URL, init?: RequestInit) => {
 
 // @ts-expect-error
 export const eden = treaty<App>(BACKEND_ORIGIN, {
+    headers: { "x-akasha-storage-version": "2" },
     fetcher: (async (input: URL | RequestInfo, init: RequestInit | undefined) => {
         const reqInit = init || {};
 
