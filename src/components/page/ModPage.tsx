@@ -4,17 +4,17 @@ import crcv from "color-convert";
 import { prominent } from "color.js";
 import { format } from "date-fns";
 import { saveAs } from "file-saver";
-import {
-  CalendarClockIcon,
-  Download,
-  DownloadIcon,
-  FolderArchiveIcon,
-  FolderIcon,
-  InfinityIcon,
-  LoaderCircleIcon,
-  LoaderIcon,
-} from "lucide-react";
 import { motion } from "motion/react";
+import {
+  DateTime as CalendarClockIcon,
+  Download,
+  Download as DownloadIcon,
+  Archive as FolderArchiveIcon,
+  Folder as FolderIcon,
+  Repeat as InfinityIcon,
+  Loader as LoaderCircleIcon,
+  Loader as LoaderIcon,
+} from "pixelarticons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";

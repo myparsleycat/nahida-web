@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import {
-  CloudyIcon,
-  LeafyGreenIcon,
-  LogInIcon,
-  LogOutIcon,
-  SettingsIcon,
-  UploadIcon,
-} from "lucide-react";
+  Cloud as CloudyIcon,
+  Leaf as LeafyGreenIcon,
+  Login as LogInIcon,
+  Logout as LogOutIcon,
+  Settings2 as SettingsIcon,
+  Upload as UploadIcon,
+} from "pixelarticons/react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 

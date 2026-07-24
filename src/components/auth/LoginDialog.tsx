@@ -1,6 +1,10 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { ArrowLeftFromLineIcon, LoaderCircleIcon, UserIcon } from "lucide-react";
+import {
+  ArrowLeft as ArrowLeftFromLineIcon,
+  Loader as LoaderCircleIcon,
+  User as UserIcon,
+} from "pixelarticons/react";
 import { useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";

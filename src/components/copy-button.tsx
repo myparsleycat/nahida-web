@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Close as X } from "pixelarticons/react";
 import * as React from "react";
 
 import { Button, type ButtonProps } from "@/components/ui/button";

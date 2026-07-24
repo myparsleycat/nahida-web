@@ -1,4 +1,4 @@
-import { SaveIcon, XIcon } from "lucide-react";
+import { Save as SaveIcon, Close as XIcon } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/ui/input";

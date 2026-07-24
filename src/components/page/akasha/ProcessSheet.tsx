@@ -1,12 +1,12 @@
 import {
-  ArrowUpDownIcon,
-  CircleXIcon,
-  DownloadIcon,
-  FileIcon,
-  FolderIcon,
-  Loader2Icon,
-  LoaderIcon,
-} from "lucide-react";
+  ArrowsVertical as ArrowUpDownIcon,
+  AvatarCircleX as CircleXIcon,
+  Download as DownloadIcon,
+  File as FileIcon,
+  Folder as FolderIcon,
+  Loader as Loader2Icon,
+  Loader as LoaderIcon,
+} from "pixelarticons/react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -118,7 +118,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
 
                     <div className="flex shrink-0 flex-row gap-1">
                       <div className="inline-flex items-center gap-2 rounded-sm border border-transparent bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden">
-                        <LoaderIcon className="animate-spin" size={12} />
+                        <LoaderIcon className="animate-spin" width={12} height={12} />
                         {getProgressMessage(upload.current)}
                       </div>
                     </div>
@@ -172,7 +172,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
 
                     <div className="flex shrink-0 flex-row gap-1">
                       <div className="inline-flex items-center gap-2 rounded-sm border border-transparent bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden">
-                        <LoaderIcon className="animate-spin" size={12} />
+                        <LoaderIcon className="animate-spin" width={12} height={12} />
                         {formatSize(download.current.downloadedSize)}/
                         {formatSize(download.current.totalSize)}
                       </div>

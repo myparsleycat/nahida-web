@@ -1,6 +1,6 @@
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Loader2, Key } from "lucide-react";
+import { Loader as Loader2, Pound as Key } from "pixelarticons/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -141,7 +141,11 @@ export function SignInCard({ className }: { className?: string }) {
             disabled={loading || !username || !password || !token}
             onClick={handleSignIn}
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <p> {t("g.login")} </p>}
+            {loading ? (
+              <Loader2 width={16} height={16} className="animate-spin" />
+            ) : (
+              <p> {t("g.login")} </p>
+            )}
           </Button>
 
           <Separator />
@@ -348,7 +352,11 @@ export function SignUpCard({ className }: { className?: string }) {
             disabled={loading || !token || !username || !password}
             onClick={handleSignUp}
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Create an account"}
+            {loading ? (
+              <Loader2 width={16} height={16} className="animate-spin" />
+            ) : (
+              "Create an account"
+            )}
           </Button>
         </div>
       </CardContent>

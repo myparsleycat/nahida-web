@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { FolderIcon, InfoIcon } from "lucide-react";
+import { Folder as FolderIcon, InfoBox as InfoIcon } from "pixelarticons/react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -151,7 +151,7 @@ export function AkashaModContents(props: AkashaModBaseProps) {
             <Center>
               <div className="flex flex-col items-center justify-center p-4">
                 <div>
-                  <FolderIcon size="100" />
+                  <FolderIcon width={100} height={100} />
                 </div>
                 <p className="mt-4 text-center text-xl">
                   {t("drive.ui.no_contents_section_message.0")}

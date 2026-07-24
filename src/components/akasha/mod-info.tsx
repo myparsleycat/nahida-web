@@ -3,19 +3,19 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
-  ActivityIcon,
-  ChartLineIcon,
-  DeleteIcon,
-  DownloadIcon,
-  EyeIcon,
-  GlobeIcon,
-  InfoIcon,
-  SaveIcon,
-  ShareIcon,
-  SquarePenIcon,
-  TrashIcon,
-  UsersIcon,
-} from "lucide-react";
+  ChartBarBig as ActivityIcon,
+  Chart as ChartLineIcon,
+  Delete as DeleteIcon,
+  Download as DownloadIcon,
+  Eye as EyeIcon,
+  Globe as GlobeIcon,
+  InfoBox as InfoIcon,
+  Save as SaveIcon,
+  Share as ShareIcon,
+  Pencil as SquarePenIcon,
+  Trash as TrashIcon,
+  Users as UsersIcon,
+} from "pixelarticons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

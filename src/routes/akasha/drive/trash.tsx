@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  DeleteIcon,
-  FileIcon,
-  FolderIcon,
-  RotateCcwIcon,
-  TrashIcon,
-} from "lucide-react";
+  ArrowDown as ArrowDownIcon,
+  ArrowUp as ArrowUpIcon,
+  Delete as DeleteIcon,
+  File as FileIcon,
+  Folder as FolderIcon,
+  Undo as RotateCcwIcon,
+  Trash as TrashIcon,
+} from "pixelarticons/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -158,9 +158,9 @@ function RouteComponent() {
                 >
                   <p className="dragselect-start-disallowed line-clamp-1 text-ellipsis">이름</p>
                   {sortType === "NAME:DESC" ? (
-                    <ArrowDownIcon size="16" />
+                    <ArrowDownIcon width={16} height={16} />
                   ) : sortType === "NAME:ASC" ? (
-                    <ArrowUpIcon size="16" />
+                    <ArrowUpIcon width={16} height={16} />
                   ) : null}
                 </div>
               </div>
@@ -177,9 +177,9 @@ function RouteComponent() {
                 >
                   <p className="dragselect-start-disallowed line-clamp-1 text-ellipsis">크기</p>
                   {sortType === "SIZE:DESC" ? (
-                    <ArrowDownIcon size="16" />
+                    <ArrowDownIcon width={16} height={16} />
                   ) : sortType === "SIZE:ASC" ? (
-                    <ArrowUpIcon size="16" />
+                    <ArrowUpIcon width={16} height={16} />
                   ) : null}
                 </div>
               </div>
@@ -196,9 +196,9 @@ function RouteComponent() {
                 >
                   <p className="dragselect-start-disallowed line-clamp-1 text-ellipsis">날짜</p>
                   {sortType === "DATE:DESC" ? (
-                    <ArrowDownIcon size="16" />
+                    <ArrowDownIcon width={16} height={16} />
                   ) : sortType === "DATE:ASC" ? (
-                    <ArrowUpIcon size="16" />
+                    <ArrowUpIcon width={16} height={16} />
                   ) : null}
                 </div>
               </div>
@@ -222,9 +222,9 @@ function RouteComponent() {
                       <div className="flex grow flex-row items-center gap-2">
                         <div className="flex h-5 w-5 items-center justify-center text-muted-foreground">
                           {item.isDir ? (
-                            <FolderIcon size="20" className="text-yellow-400" />
+                            <FolderIcon width={20} height={20} className="text-yellow-400" />
                           ) : (
-                            <FileIcon size="20" className="text-blue-400" />
+                            <FileIcon width={20} height={20} className="text-blue-400" />
                           )}
                         </div>
                         <span className="line-clamp-1">{item.name}</span>
@@ -300,7 +300,7 @@ function RouteComponent() {
                         });
                     }}
                   >
-                    <RotateCcwIcon size={18} />
+                    <RotateCcwIcon width={18} height={18} />
                     복원
                   </ContextMenuItem>
 
@@ -322,7 +322,7 @@ function RouteComponent() {
                         });
                     }}
                   >
-                    <DeleteIcon size={18} />
+                    <DeleteIcon width={18} height={18} />
                     영구 삭제
                   </ContextMenuItem>
                 </>
@@ -335,7 +335,7 @@ function RouteComponent() {
       return (
         <div className="flex h-full w-full flex-row items-center justify-center select-none">
           <div className="flex flex-col items-center justify-center p-4">
-            <TrashIcon size="100" />
+            <TrashIcon width={100} height={100} />
             <p className="mt-4 text-center text-xl">
               {t("drive.ui.no_trashed_content_section_message")}
             </p>

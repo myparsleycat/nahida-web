@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Close as X } from "pixelarticons/react";
 import React, { useState, useEffect, useRef } from "react";
 
 // Types

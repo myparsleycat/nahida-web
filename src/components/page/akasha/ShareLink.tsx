@@ -1,4 +1,4 @@
-import { FolderIcon } from "lucide-react";
+import { Folder as FolderIcon } from "pixelarticons/react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -98,7 +98,7 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
               <div className="flex h-full w-full flex-row items-center justify-center select-none">
                 <div className="flex flex-col items-center justify-center p-4">
                   <div>
-                    <FolderIcon size="100" />
+                    <FolderIcon width={100} height={100} />
                   </div>
                   <p className="mt-4 text-center text-xl">
                     {t("drive.ui.no_contents_section_message.0")}

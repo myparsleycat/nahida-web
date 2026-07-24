@@ -1,5 +1,10 @@
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { ArchiveIcon, FileArchiveIcon, FileIcon, Loader2 } from "lucide-react";
+import {
+  Archive as ArchiveIcon,
+  Archive as FileArchiveIcon,
+  File as FileIcon,
+  Loader as Loader2,
+} from "pixelarticons/react";
 import { forwardRef, useRef } from "react";
 
 import {

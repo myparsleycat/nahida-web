@@ -1,21 +1,20 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import {
-  BellIcon,
+  Bell as BellIcon,
   Copy as CopyIcon,
-  DeleteIcon,
-  EyeIcon,
-  FolderIcon,
-  GlobeIcon,
-  Monitor,
-  MonitorIcon,
-  MousePointer2Icon,
-  RotateCcwIcon,
-  Share2Icon,
-  SquarePenIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react";
+  Delete as DeleteIcon,
+  Eye as EyeIcon,
+  Folder as FolderIcon,
+  Globe as GlobeIcon,
+  Monitor as MonitorIcon,
+  Pointer as MousePointer2Icon,
+  Undo as RotateCcwIcon,
+  Share as Share2Icon,
+  Pencil as SquarePenIcon,
+  Trash as Trash2Icon,
+  Close as XIcon,
+} from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -143,7 +142,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
                   params={{ itemId: selectedItems[0].id }}
                   className="gap-x-2"
                 >
-                  <MousePointer2Icon size={18} />
+                  <MousePointer2Icon width={18} height={18} />
                   {t("drive.ui.context_menu.open")}
                 </Link>
               </ContextMenuItem>
@@ -154,7 +153,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
           {selectedItems[0].mimeType?.startsWith("text") ||
             (selectedItems[0].mimeType?.startsWith("image") && (
               <ContextMenuItem className="cugap-x-2">
-                <EyeIcon size={18} />
+                <EyeIcon width={18} height={18} />
                 {t("drive.ui.context_menu.preview")}
               </ContextMenuItem>
             ))}
@@ -166,7 +165,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
               className="gap-x-2"
               onClick={() => akasha.item(selectedItems[0]).download()}
             >
-              <GlobeIcon size={18} />
+              <GlobeIcon width={18} height={18} />
               {t("g.browser_download")}
             </ContextMenuItem>
 
@@ -174,7 +173,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
               className="gap-x-2"
               onClick={() => startAkashaDownloadForDesktop({ item: selectedItems[0] })}
             >
-              <MonitorIcon size={18} />
+              <MonitorIcon width={18} height={18} />
               {t("g.desktop_download")}
             </ContextMenuItem>
           </DropdownMenuGroup>
@@ -193,7 +192,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
               }
             }}
           >
-            <Share2Icon size={18} />
+            <Share2Icon width={18} height={18} />
             {t("drive.ui.context_menu.share")}
           </ContextMenuItem>
 
@@ -219,7 +218,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
               })
             }
           >
-            <SquarePenIcon size={18} />
+            <SquarePenIcon width={18} height={18} />
             {t("drive.ui.rename")}
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -240,11 +239,11 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
               }
             }}
           >
-            <CopyIcon size={18} />
+            <CopyIcon width={18} height={18} />
             {t("drive.ui.context_menu.copy")}
           </ContextMenuItem>
           <ContextMenuItem className="gap-x-2" onClick={() => akasha.copyId(selectedItems[0])}>
-            <CopyIcon size={18} />
+            <CopyIcon width={18} height={18} />
             {t("drive.ui.context_menu.copy_id")}
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -253,7 +252,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
 
       {selectedItems.every((item) => item.mimeType?.startsWith("image")) && (
         <ContextMenuItem className="cursor-pointer gap-x-2">
-          <RotateCcwIcon size={18} />
+          <RotateCcwIcon width={18} height={18} />
           RG
         </ContextMenuItem>
       )}
@@ -263,7 +262,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
         variant="destructive"
         onClick={() => trashMutation.mutateAsync({ items: selectedItems })}
       >
-        <Trash2Icon size={18} />
+        <Trash2Icon width={18} height={18} />
         {t("drive.ui.trash")}
       </ContextMenuItem>
     </>
@@ -272,7 +271,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
       className="cursor-pointer gap-x-2"
       onClick={() => dialog.setOpen("createDirDialog", true)}
     >
-      <FolderIcon size={18} />
+      <FolderIcon width={18} height={18} />
       {t("drive.ui.new_dir")}
     </ContextMenuItem>
   );
@@ -297,7 +296,7 @@ function ContextMenuLinkContentSnippet(
           {selectedItems[0].isDir && (
             <>
               <ContextMenuItem className="gap-x-2" onClick={() => navi(selectedItems[0].id)}>
-                <MousePointer2Icon size={18} />
+                <MousePointer2Icon width={18} height={18} />
                 {t("drive.ui.context_menu.open")}
               </ContextMenuItem>
 
@@ -315,7 +314,7 @@ function ContextMenuLinkContentSnippet(
                   });
                 }}
               >
-                <BellIcon size={18} />
+                <BellIcon width={18} height={18} />
                 알림
               </ContextMenuItem>
 
@@ -326,7 +325,7 @@ function ContextMenuLinkContentSnippet(
           {(selectedItems[0].mimeType?.startsWith("text") ||
             selectedItems[0].mimeType?.startsWith("image")) && (
             <ContextMenuItem className="cugap-x-2">
-              <EyeIcon size={18} />
+              <EyeIcon width={18} height={18} />
               {t("drive.ui.context_menu.preview")}
             </ContextMenuItem>
           )}
@@ -337,7 +336,7 @@ function ContextMenuLinkContentSnippet(
               className="gap-x-2"
               onClick={() => akasha.item(selectedItems[0]).download(link)}
             >
-              <GlobeIcon size={18} />
+              <GlobeIcon width={18} height={18} />
               {t("g.browser_download")}
             </ContextMenuItem>
 
@@ -345,7 +344,7 @@ function ContextMenuLinkContentSnippet(
               className="gap-x-2"
               onClick={() => startAkashaDownloadForDesktop({ item: selectedItems[0], link })}
             >
-              <Monitor size={18} />
+              <MonitorIcon width={18} height={18} />
               {t("g.desktop_download")}
             </ContextMenuItem>
           </DropdownMenuGroup>
@@ -392,7 +391,7 @@ function ContextMenuModContentSnippet({
           {selectedItems[0].isDir && (
             <>
               <ContextMenuItem className="gap-x-2" onClick={() => navi(selectedItems[0].id)}>
-                <MousePointer2Icon size={18} />
+                <MousePointer2Icon width={18} height={18} />
                 {t("drive.ui.context_menu.open")}
               </ContextMenuItem>
               <ContextMenuSeparator />
@@ -407,7 +406,7 @@ function ContextMenuModContentSnippet({
                   className="gap-x-2"
                   onClick={() => startDownload({ items: selectedItems })}
                 >
-                  <GlobeIcon size={18} />
+                  <GlobeIcon width={18} height={18} />
                   {t("g.browser_download")}
                 </ContextMenuItem>
 
@@ -415,7 +414,7 @@ function ContextMenuModContentSnippet({
                   className="gap-x-2"
                   onClick={() => startDownloadForDesktop({ items: selectedItems })}
                 >
-                  <MonitorIcon size={18} />
+                  <MonitorIcon width={18} height={18} />
                   {t("g.desktop_download")}
                 </ContextMenuItem>
               </DropdownMenuGroup>
@@ -430,7 +429,7 @@ function ContextMenuModContentSnippet({
             </>
           ) : (
             <ContextMenuItem className="cursor-not-allowed gap-x-2 text-muted-foreground focus:text-muted-foreground">
-              <XIcon size={18} />
+              <XIcon width={18} height={18} />
               No Action
             </ContextMenuItem>
           )}
@@ -461,7 +460,7 @@ function ContextMenuModContentSnippet({
                     });
                 }}
               >
-                <DeleteIcon size={18} />
+                <DeleteIcon width={18} height={18} />
                 Delete
               </ContextMenuItem>
             </>
@@ -469,7 +468,7 @@ function ContextMenuModContentSnippet({
         </>
       ) : (
         <ContextMenuItem className="cursor-not-allowed gap-x-2 text-muted-foreground focus:text-muted-foreground">
-          <XIcon size={18} />
+          <XIcon width={18} height={18} />
           No Action
         </ContextMenuItem>
       )}

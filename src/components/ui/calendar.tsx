@@ -1,4 +1,8 @@
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ChevronDown as ChevronDownIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+} from "pixelarticons/react";
 import * as React from "react";
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 

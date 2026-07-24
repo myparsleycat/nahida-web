@@ -1,7 +1,7 @@
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useRouter } from "@tanstack/react-router";
-import { ImageIcon, Loader2Icon } from "lucide-react";
 import { motion } from "motion/react";
+import { Image as ImageIcon, Loader as Loader2Icon } from "pixelarticons/react";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 

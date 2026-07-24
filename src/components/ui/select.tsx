@@ -1,4 +1,8 @@
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
+import {
+  ChevronDown as ChevronDownIcon,
+  Check as CheckIcon,
+  ChevronUp as ChevronUpIcon,
+} from "pixelarticons/react";
 import { Select as SelectPrimitive } from "radix-ui";
 import * as React from "react";
 

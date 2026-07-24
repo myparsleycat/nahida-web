@@ -1,5 +1,5 @@
 import { useLocation } from "@tanstack/react-router";
-import { MenuIcon } from "lucide-react";
+import { Menu as MenuIcon } from "pixelarticons/react";
 import { useState } from "react";
 
 import { SidePanelContent } from "@/components/layout/SidePanel";

@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useParams, useRouteContext } from "@tanstack/react-router";
-import { Loader2Icon } from "lucide-react";
+import { Loader as Loader2Icon } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 

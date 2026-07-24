@@ -1,7 +1,11 @@
 // file-tree.tsx
 
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { FileIcon, FolderIcon, FolderOpenIcon } from "lucide-react";
+import {
+  File as FileIcon,
+  Folder as FolderIcon,
+  Open as FolderOpenIcon,
+} from "pixelarticons/react";
 import React, {
   createContext,
   forwardRef,

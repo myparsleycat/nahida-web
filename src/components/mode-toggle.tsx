@@ -1,4 +1,4 @@
-import { Moon, MoonIcon, Sun, SunIcon } from "lucide-react";
+import { Moon as MoonIcon, CloudSun as SunIcon } from "pixelarticons/react";
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -32,14 +32,16 @@ export function ModeToggle({ className, size }: { className?: string; size?: num
           "transition-all duration-500 ease-in-out",
           "scale-0 rotate-90 dark:scale-100 dark:rotate-0",
         )}
-        size={size}
+        width={size}
+        height={size}
       />
       <SunIcon
         className={cn(
           "absolute transition-transform duration-500 ease-in-out",
           "scale-100 rotate-0 dark:scale-0 dark:-rotate-90",
         )}
-        size={size}
+        width={size}
+        height={size}
       />
     </button>
   );
