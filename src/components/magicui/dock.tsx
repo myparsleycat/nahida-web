@@ -28,7 +28,7 @@ const DEFAULT_MAGNIFICATION = 60;
 const DEFAULT_DISTANCE = 140;
 
 const dockVariants = cva(
-  "z-50 overflow-hidden mx-auto w-max h-[48px] p-2 px-4 flex gap-2 rounded-3xl border transition-[border-color,border-width] dark:transition-[border-color,border-width] duration-200 ease-in-out",
+  "z-50 overflow-hidden mx-auto w-max h-[48px] p-2 px-4 flex gap-2 rounded-lg border transition-[border-color,border-width] dark:transition-[border-color,border-width] duration-200 ease-in-out",
 );
 
 const Dock = React.forwardRef<HTMLDivElement, DockProps>(
@@ -74,9 +74,7 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
           "items-end": direction === "bottom",
           "border-black/0 dark:border-white/0": !borderBool,
           "border-black/15 dark:border-white/15": borderBool,
-          "supports-backdrop-blur:bg-white/10": borderBool,
-          "supports-backdrop-blur:dark:bg-black/10": borderBool,
-          "backdrop-blur-md": borderBool,
+          "bg-muted": borderBool,
         })}
       >
         {renderChildren()}

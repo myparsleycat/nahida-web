@@ -137,7 +137,7 @@ export const VT = ({ modData }: { modData: HelloClientResponse["mod"] }) => {
       initial={{ opacity: 0, y: -40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-      className="col-span-2 col-start-4 row-span-3 rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+      className="col-span-2 col-start-4 row-span-3 rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
     >
       {modData.vt_data ? (
         <div className="flex h-full items-center justify-center">
@@ -160,7 +160,7 @@ export const Expires = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut", delay: 0.15 }}
-      className="col-span-2 col-start-6 row-span-3 rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+      className="col-span-2 col-start-6 row-span-3 rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
     >
       <div className="col-span-1 row-span-2 h-full overflow-hidden">
         <div className="flex h-full flex-col items-center justify-evenly p-4">
@@ -219,7 +219,7 @@ export const Title = ({ modData }: { modData: HelloClientResponse["mod"] }) => {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
-      className="relative col-span-4 col-start-4 row-span-3 row-start-4 overflow-hidden rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+      className="relative col-span-4 col-start-4 row-span-3 row-start-4 overflow-hidden rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
     >
       <div className="flex h-full flex-col items-center justify-center space-y-4 p-10">
         <p className="inline-block text-3xl font-extrabold drop-shadow-xl" style={gradientStyle}>
@@ -247,7 +247,7 @@ export const Size = ({ modData }: { modData: HelloClientResponse["mod"] }) => {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-      className="col-span-3 col-start-5 row-span-2 row-start-7 rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+      className="col-span-3 col-start-5 row-span-2 row-start-7 rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
     >
       <div className="flex h-full flex-row items-center justify-evenly p-4">
         {Boolean(modData.size) && (
@@ -289,7 +289,7 @@ export const Description = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut", delay: 0.125 }}
       className={cn(
-        "col-span-4 col-start-1 row-span-2 row-start-7 rounded-2xl",
+        "col-span-4 col-start-1 row-span-2 row-start-7 rounded-lg",
         "overflow-hidden border shadow-xs transition-shadow duration-300 hover:shadow-lg",
         modData.uuid === "60507de6-ce1d-4d24-84c5-5142a886cd97" &&
           "bg-[url(/img/598d59544136477e408551551aa11a9b2f41ad167f0f3b636c58fb1f91595527.avif)] bg-cover",
@@ -327,7 +327,7 @@ export const SwapKey = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
-      className="col-span-2 col-start-8 row-span-6 row-start-3 overflow-hidden rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+      className="col-span-2 col-start-8 row-span-6 row-start-3 overflow-hidden rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
     >
       {modData.merged && modData.swapkey ? (
         <div className="h-full w-full overflow-y-auto break-all">
@@ -561,7 +561,7 @@ export const Buttons = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
         initial={{ opacity: 0, x: 30, y: -30 }}
         animate={{ opacity: 1, x: 0, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
-        className="relative col-span-2 col-start-8 row-span-2 row-start-1 rounded-2xl border shadow-xs transition-shadow duration-300 hover:shadow-lg"
+        className="relative col-span-2 col-start-8 row-span-2 row-start-1 rounded-lg border shadow-xs transition-shadow duration-300 hover:shadow-lg"
       >
         <div className="flex h-full flex-row items-center justify-center gap-x-12 p-4">
           <div className="flex">
@@ -603,7 +603,7 @@ export const Buttons = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
         <div className="w-screen overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <DialogContent
-              className="w-full max-w-md rounded-xl bg-black/25 p-6 shadow-lg backdrop-blur-2xl duration-300 ease-out not-dark:border-black/25 dark:bg-white/5 data-closed:transform-[scale(95%)] data-closed:opacity-0"
+              className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg duration-300 ease-out not-dark:border-black/25 data-closed:transform-[scale(95%)] data-closed:opacity-0"
               onInteractOutside={
                 !tryPass && !verifyTurnstile ? undefined : (e) => e.preventDefault()
               }

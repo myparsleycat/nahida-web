@@ -84,14 +84,14 @@ function Component() {
   const chartConfig = {
     size: {
       label: "전송량",
-      color: "hsl(var(--chart-1))",
+      color: "var(--chart-1)",
     },
   };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center" onWheel={handleWheel}>
       <div
-        className="relative my-20 flex h-175 w-full flex-col items-center justify-center overflow-hidden border-y backdrop-blur-sm"
+        className="relative my-20 flex h-175 w-full flex-col items-center justify-center overflow-hidden border-y"
         style={{
           fontFamily: "Mix",
         }}

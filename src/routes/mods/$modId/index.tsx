@@ -82,7 +82,7 @@ function RouteComponent() {
       <>
         <div className="flex min-h-[calc(100vh-4.5rem)] w-full items-center justify-center p-6 pt-18 pb-28">
           <div className="flex h-full w-full flex-col items-center justify-center space-y-4 text-center">
-            <Random1619 className="m-8 size-50 rounded-4xl select-none" alt="expired alert hida" />
+            <Random1619 className="m-8 size-50 rounded-lg select-none" alt="expired alert hida" />
             <p className="text-2xl">Expired Content</p>
             {modQuery.data.expires_at && (
               <p className="text-base text-pretty">
@@ -107,7 +107,7 @@ function RouteComponent() {
                     "top-0 right-0 bottom-0 left-0 grid w-full grid-cols-1 gap-3 overflow-hidden rounded-xl p-4 will-change-auto sm:h-175  sm:grid-cols-9 sm:grid-rows-8 xl:w-325"
                   }
                 >
-                  <div className="col-span-3 row-span-6 rounded-2xl">
+                  <div className="col-span-3 row-span-6 rounded-lg">
                     <Preview modData={modQuery.data} />
                   </div>
                   <VT modData={modQuery.data} />

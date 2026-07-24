@@ -211,7 +211,7 @@ function RouteComponent() {
 
   return (
     <ModContext.Provider value={contextValue}>
-      <div className="relative flex size-full flex-row backdrop-blur-xs">
+      <div className="relative flex size-full flex-row">
         <div className="flex flex-1 shrink-0 flex-col">
           {itemQuery.data ? (
             <AkashaModContents

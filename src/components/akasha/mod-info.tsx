@@ -156,7 +156,7 @@ export function AkashaModInfo(props: AkashaModInfoProps) {
                   {data.mod.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="bg-material-medium hover:bg-material-thin inline-flex items-center rounded-full px-2 py-1 text-xs whitespace-nowrap backdrop-blur-sm"
+                      className="inline-flex items-center rounded-sm bg-muted px-2 py-1 text-xs whitespace-nowrap"
                     >
                       {tag}
                     </span>

@@ -10,6 +10,10 @@ count.txt
 # Sentry Config File
 .env.sentry-build-plugin
 
+# Env files
+.env*
+!.env.example
+
 .wrangler
 .idea
 

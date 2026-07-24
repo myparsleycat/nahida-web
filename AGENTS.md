@@ -1,3 +1,5 @@
+@DESIGN-SYSTEM.md
+
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
 

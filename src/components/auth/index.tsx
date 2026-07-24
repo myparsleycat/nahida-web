@@ -64,7 +64,7 @@ export function SignInCard({ className }: { className?: string }) {
 
   return (
     <Card
-      className={cn("w-full max-w-md bg-transparent backdrop-blur-lg", className)}
+      className={cn("w-full max-w-md bg-card", className)}
       onKeyDown={async (e) => {
         if (e.key === "Enter") {
           if (loading || !username || !password || !token) {
@@ -277,7 +277,7 @@ export function SignUpCard({ className }: { className?: string }) {
 
   return (
     <Card
-      className={cn("w-full max-w-md bg-transparent backdrop-blur-lg", className)}
+      className={cn("w-full max-w-md bg-card", className)}
       onKeyDown={async (e) => {
         if (e.key === "Enter") {
           if (loading || !username || !password || !token) {

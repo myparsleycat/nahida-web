@@ -6,8 +6,6 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Center } from "@/components/common";
-import { ShineBorder } from "@/components/magicui/shine-border";
-import { useTheme } from "@/components/theme-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +35,6 @@ interface AkashaModPwdProtectProps {
 export function AkashaModPwdProtect(props: AkashaModPwdProtectProps) {
   const { modId, errMsg: errM, preview } = props;
   const { t } = useTranslation();
-  const theme = useTheme();
   const [password, setModPwd] = useState("");
   const router = useRouter();
 
@@ -89,8 +86,7 @@ export function AkashaModPwdProtect(props: AkashaModPwdProtectProps) {
   return (
     <div className="relative h-full w-full">
       <Center size="page-full">
-        <Card className="relative overflow-hidden bg-transparent backdrop-blur-lg">
-          <ShineBorder shineColor={theme.theme === "dark" ? "white" : "black"} />
+        <Card className="relative overflow-hidden bg-card">
           <CardContent className="flex flex-col space-y-3">
             <div className="flex w-full items-center justify-between">
               <CardTitle>비밀번호로 보호된 모드</CardTitle>
