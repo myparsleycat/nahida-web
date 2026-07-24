@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { Check as CheckIcon, ChevronRight as ChevronRightIcon } from "pixelarticons/react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import type * as React from "react";
 

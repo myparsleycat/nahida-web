@@ -1,5 +1,9 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { HardDriveIcon, Share2Icon, Trash2Icon } from "lucide-react";
+import {
+  Server as HardDriveIcon,
+  Share as Share2Icon,
+  Trash as Trash2Icon,
+} from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import { ProcessSheet } from "@/components/page/akasha/ProcessSheet";
@@ -95,7 +99,7 @@ export function DriveInnerNav(props: DriveInnerNavProps) {
                       className="cursor-pointer gap-x-2"
                       onClick={() => dialog.setOpen("emptyTrashDialog", true)}
                     >
-                      <Trash2Icon size={20} />
+                      <Trash2Icon width={20} height={20} />
                       {t("drive.ui.empty_trash")}
                     </ContextMenuItem>
                   </ContextMenuContent>

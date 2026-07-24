@@ -1,6 +1,6 @@
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { LoaderIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { Loader as LoaderIcon } from "pixelarticons/react";
 import { useEffect, useState } from "react";
 
 import {

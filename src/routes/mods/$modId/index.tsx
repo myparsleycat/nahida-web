@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { UnlinkIcon } from "lucide-react";
+import { Unlink as UnlinkIcon } from "pixelarticons/react";
 
 import { Center, ServerCrash, AliceLoader, Random1619 } from "@/components/common";
 import {
@@ -69,7 +69,7 @@ function RouteComponent() {
     return (
       <Center size="page-full">
         <div className="flex grow flex-col items-center justify-center p-4">
-          <UnlinkIcon size="80" />
+          <UnlinkIcon width={80} height={80} />
           <h3 className="mt-8 text-2xl">잘못된 URL</h3>
           <h5 className="mt-2 text-lg">URL을 다시 확인하세요</h5>
         </div>

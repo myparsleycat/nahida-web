@@ -1,4 +1,4 @@
-import { EarthIcon, LockIcon } from "lucide-react";
+import { Earth as EarthIcon, Lock as LockIcon } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import { Label } from "@/components/ui/label";

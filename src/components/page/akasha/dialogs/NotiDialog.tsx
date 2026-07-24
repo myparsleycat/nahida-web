@@ -2,7 +2,7 @@ import Validator from "@backend/lib/utils/Validator";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
+import { Loader as Loader2Icon } from "pixelarticons/react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";

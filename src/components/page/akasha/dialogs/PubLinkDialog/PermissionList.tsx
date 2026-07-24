@@ -1,5 +1,5 @@
-import { LinkIcon } from "lucide-react";
-import { AlertTriangleIcon } from "lucide-react";
+import { Link as LinkIcon } from "pixelarticons/react";
+import { WarningDiamond as AlertTriangleIcon } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

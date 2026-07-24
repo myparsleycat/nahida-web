@@ -1,7 +1,13 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { CloudyIcon, LeafyGreenIcon, LogInIcon, LogOutIcon, UploadIcon } from "lucide-react";
+import {
+  Cloud as CloudyIcon,
+  Leaf as LeafyGreenIcon,
+  Login as LogInIcon,
+  Logout as LogOutIcon,
+  Upload as UploadIcon,
+} from "pixelarticons/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useWindowScroll } from "react-use";
@@ -58,7 +64,7 @@ export default function Header() {
           >
             <DockIcon>
               <Link to="/" className="inline-flex h-full w-full items-center justify-center">
-                <LeafyGreenIcon size={22} />
+                <LeafyGreenIcon width={22} height={22} />
               </Link>
             </DockIcon>
 
@@ -67,7 +73,7 @@ export default function Header() {
                 to="/akasha/mod/create"
                 className="inline-flex h-full w-full items-center justify-center"
               >
-                <UploadIcon size={22} />
+                <UploadIcon width={22} height={22} />
               </Link>
             </DockIcon>
 
@@ -130,7 +136,7 @@ export default function Header() {
                   search={{ redirect: window.location.href }}
                   className="inline-flex h-full w-full items-center justify-center"
                 >
-                  <LogInIcon size={22} />
+                  <LogInIcon width={22} height={22} />
                 </Link>
               </DockIcon>
             )}
@@ -154,7 +160,7 @@ export default function Header() {
                     params={{ itemId: driveRootId }}
                     className="inline-flex h-full w-full items-center justify-center"
                   >
-                    <CloudyIcon size={22} />
+                    <CloudyIcon width={22} height={22} />
                   </Link>
                 </DockIcon>
               </>

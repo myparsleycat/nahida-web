@@ -1,6 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { EyeIcon, EyeOffIcon, LockIcon, TrashIcon } from "lucide-react";
+import {
+  Eye as EyeIcon,
+  EyeOff as EyeOffIcon,
+  Lock as LockIcon,
+  Trash as TrashIcon,
+} from "pixelarticons/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -191,7 +196,7 @@ export function CollectionList(props: CollectionListProps) {
                     asChild
                   >
                     <Button variant="ghost" size="icon">
-                      <TrashIcon size={20} />
+                      <TrashIcon width={20} height={20} />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

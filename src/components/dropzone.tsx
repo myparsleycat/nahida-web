@@ -1,4 +1,4 @@
-import { UploadIcon } from "lucide-react";
+import { Upload as UploadIcon } from "pixelarticons/react";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 import type { DropEvent, DropzoneOptions, FileRejection } from "react-dropzone";
@@ -105,7 +105,7 @@ export const DropzoneContent = ({ children, className }: DropzoneContentProps) =
   return (
     <div className={cn("flex flex-col items-center justify-center", className)}>
       <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <UploadIcon size={16} />
+        <UploadIcon width={16} height={16} />
       </div>
       <p className="my-2 w-full truncate text-sm font-medium">
         {src.length > maxLabelItems
@@ -147,7 +147,7 @@ export const DropzoneEmptyState = ({ children, className }: DropzoneEmptyStatePr
   return (
     <div className={cn("flex flex-col items-center justify-center", className)}>
       <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <UploadIcon size={16} />
+        <UploadIcon width={16} height={16} />
       </div>
       <p className="my-2 w-full truncate text-sm font-medium text-wrap">
         Upload {maxFiles === 1 ? "a file" : "files"}

@@ -1,4 +1,4 @@
-import { SaveIcon } from "lucide-react";
+import { Save as SaveIcon } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import { DatePicker } from "@/components/DatePicker";

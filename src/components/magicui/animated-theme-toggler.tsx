@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, SunDim } from "lucide-react";
+import { Moon, CloudSun as SunDim } from "pixelarticons/react";
 import { useState, useRef } from "react";
 import { flushSync } from "react-dom";
 
@@ -55,11 +55,13 @@ export const AnimatedThemeToggler = ({ className, size }: props) => {
     <button ref={buttonRef} onClick={changeTheme} className={cn("flex", className)}>
       <Moon
         className="scale-0 rotate-90 transition-all duration-500 ease-in-out dark:scale-100 dark:rotate-0"
-        size={size}
+        width={size}
+        height={size}
       />
       <SunDim
         className="absolute scale-100 rotate-0 transition-transform duration-500 ease-in-out dark:scale-0 dark:-rotate-90"
-        size={size}
+        width={size}
+        height={size}
       />
     </button>
   );

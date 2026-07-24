@@ -1,8 +1,8 @@
 import { motion, type Variants } from "framer-motion";
-import { Loader2Icon } from "lucide-react";
+import { Loader as Loader2Icon } from "pixelarticons/react";
 
 export function LoaderSpinner() {
-  return <Loader2Icon size={70} className="animate-spin" />;
+  return <Loader2Icon width={70} height={70} className="animate-spin" />;
 }
 
 export function BangbooNetLoading() {

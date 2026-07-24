@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderIcon } from "lucide-react";
+import { Folder as FolderIcon } from "pixelarticons/react";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -171,7 +171,7 @@ function RouteComponent() {
                 ) : query.isFetched && sortedContents.length < 1 ? (
                   <Center className="flex-col">
                     <div>
-                      <FolderIcon size="80" />
+                      <FolderIcon width={80} height={80} />
                     </div>
                     <p className="mt-4 text-center text-lg">
                       {t("drive.ui.no_contents_section_message.0")}

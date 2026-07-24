@@ -1,5 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, FolderIcon } from "lucide-react";
+import {
+  Check as CheckIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronLeft as ChevronLeftIcon,
+  Folder as FolderIcon,
+} from "pixelarticons/react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -45,7 +50,7 @@ function BreadcrumbInner({
             onNavigate(current.parentId);
           }}
         >
-          <ChevronLeftIcon size={20} />
+          <ChevronLeftIcon width={20} height={20} />
         </Button>
       )}
 

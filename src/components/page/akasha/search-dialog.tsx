@@ -1,6 +1,6 @@
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useQuery } from "@tanstack/react-query";
-import { SearchIcon } from "lucide-react";
+import { Search as SearchIcon } from "pixelarticons/react";
 import { useState } from "react";
 import { toast } from "sonner";
 

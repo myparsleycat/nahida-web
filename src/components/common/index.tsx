@@ -1,4 +1,4 @@
-import { ServerCrashIcon } from "lucide-react";
+import { WarningDiamond as ServerCrashIcon } from "pixelarticons/react";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";

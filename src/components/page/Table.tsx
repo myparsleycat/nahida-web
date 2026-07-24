@@ -2,15 +2,15 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { saveAs } from "file-saver";
 import {
-  CalendarClockIcon,
-  CalendarXIcon,
-  EllipsisIcon,
-  InfinityIcon,
-  LoaderCircleIcon,
-  LockIcon,
-  TrashIcon,
-  XIcon,
-} from "lucide-react";
+  DateTime as CalendarClockIcon,
+  Calendar as CalendarXIcon,
+  MoreHorizontal as EllipsisIcon,
+  Repeat as InfinityIcon,
+  Loader as LoaderCircleIcon,
+  Lock as LockIcon,
+  Trash as TrashIcon,
+  Close as XIcon,
+} from "pixelarticons/react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";

@@ -1,4 +1,4 @@
-import { CopyIcon, LoaderIcon } from "lucide-react";
+import { Copy as CopyIcon, Loader as LoaderIcon } from "pixelarticons/react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -116,7 +116,7 @@ export function PubLinkDialog() {
           </div>
         ) : (
           <div className="flex items-center justify-center">
-            <LoaderIcon className="animate-spin-1.5" size={40} />
+            <LoaderIcon className="animate-spin-1.5" width={40} height={40} />
           </div>
         )}
       </DialogContent>

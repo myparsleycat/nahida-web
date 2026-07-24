@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import {
-  CloudyIcon,
-  LeafyGreenIcon,
-  LogInIcon,
-  LogOutIcon,
-  SettingsIcon,
-  UploadIcon,
-} from "lucide-react";
+  Cloud as CloudyIcon,
+  Leaf as LeafyGreenIcon,
+  Login as LogInIcon,
+  Logout as LogOutIcon,
+  Settings2 as SettingsIcon,
+  Upload as UploadIcon,
+} from "pixelarticons/react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -50,23 +50,23 @@ export function SidePanelContent(props: SidePanelContentProps) {
 
   const linkClass = labeled
     ? cn(buttonVariants({ variant: "ghost" }), "flex w-full justify-start gap-3 px-3")
-    : buttonVariants({ variant: "ghost", size: "icon" });
+    : buttonVariants({ variant: "ghost", size: "icon-lg" });
 
   return (
     <>
       <Link to="/" className={linkClass}>
-        <LeafyGreenIcon />
+        <LeafyGreenIcon className="size-6" />
         {labeled && <span>{t("g.home")}</span>}
       </Link>
 
       <Link to="/akasha/mod/create" className={linkClass}>
-        <UploadIcon />
+        <UploadIcon className="size-6" />
         {labeled && <span>{t("g.upload")}</span>}
       </Link>
 
       {driveRootId && (
         <Link to="/akasha/drive/$itemId" params={{ itemId: driveRootId }} className={linkClass}>
-          <CloudyIcon />
+          <CloudyIcon className="size-6" />
           {labeled && <span>{t("g.nahida_drive")}</span>}
         </Link>
       )}
@@ -77,7 +77,7 @@ export function SidePanelContent(props: SidePanelContentProps) {
             className={cn(
               labeled
                 ? cn(buttonVariants({ variant: "ghost" }), "flex w-full justify-start gap-3 px-3")
-                : cn(buttonVariants({ variant: "ghost", size: "icon" }), "overflow-hidden"),
+                : cn(buttonVariants({ variant: "ghost", size: "icon-lg" }), "overflow-hidden"),
               labeled && "overflow-hidden",
             )}
           >
@@ -116,7 +116,7 @@ export function SidePanelContent(props: SidePanelContentProps) {
                 className="cursor-pointer gap-x-2"
                 onClick={async () => await signOut()}
               >
-                <LogOutIcon />
+                <LogOutIcon className="size-6" />
                 {t("g.logout")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -124,7 +124,7 @@ export function SidePanelContent(props: SidePanelContentProps) {
         </DropdownMenu>
       ) : (
         <Link to="/sign-in" search={{ redirect: window.location.href }} className={linkClass}>
-          <LogInIcon />
+          <LogInIcon className="size-6" />
           {labeled && <span>{t("g.login")}</span>}
         </Link>
       )}
@@ -132,12 +132,12 @@ export function SidePanelContent(props: SidePanelContentProps) {
       <Separator />
 
       <div className={cn("flex items-center gap-3", labeled ? "px-3" : "")}>
-        <AnimatedThemeToggler className={buttonVariants({ variant: "ghost", size: "icon" })} />
+        <AnimatedThemeToggler className={buttonVariants({ variant: "ghost", size: "icon-lg" })} />
         {labeled && <span className="text-sm">{t("g.theme")}</span>}
       </div>
 
       <Link to="/setting" className={linkClass}>
-        <SettingsIcon />
+        <SettingsIcon className="size-6" />
         {labeled && <span>{t("g.settings")}</span>}
       </Link>
 
@@ -145,12 +145,12 @@ export function SidePanelContent(props: SidePanelContentProps) {
         href="https://nhl.fanbox.cc/"
         target="_blank"
         className={cn(
-          buttonVariants({ variant: "ghost", size: "icon" }),
+          buttonVariants({ variant: "ghost", size: "icon-lg" }),
           labeled && "flex w-full justify-start gap-3 px-3",
           "overflow-hidden rounded-lg",
         )}
       >
-        <img src="/icon/Pixiv_FANBOX_(Icon).svg" />
+        <img src="/icon/Pixiv_FANBOX_(Icon).svg" className="size-6" />
         {labeled && <span className="text-sm">{t("g.fanbox")}</span>}
       </a>
     </>

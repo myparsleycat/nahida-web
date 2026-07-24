@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { Close as X } from "pixelarticons/react";
 import { useState } from "react";
 
 import { useSession } from "@/lib/auth-client";

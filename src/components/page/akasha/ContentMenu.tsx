@@ -1,11 +1,11 @@
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  FileIcon,
-  FileTextIcon,
-  FolderIcon,
-  LoaderIcon,
-} from "lucide-react";
+  ArrowDown as ArrowDownIcon,
+  ArrowUp as ArrowUpIcon,
+  File as FileIcon,
+  FileText as FileTextIcon,
+  Folder as FolderIcon,
+  Loader as LoaderIcon,
+} from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 
 import type { Content } from "@/lib/akasha";
@@ -52,8 +52,8 @@ function ListHead() {
               )}
             >
               <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.name")}</p>
-              {view.sortType === "NAME:DESC" && <ArrowDownIcon size="16" />}
-              {view.sortType === "NAME:ASC" && <ArrowUpIcon size="16" />}
+              {view.sortType === "NAME:DESC" && <ArrowDownIcon width={16} height={16} />}
+              {view.sortType === "NAME:ASC" && <ArrowUpIcon width={16} height={16} />}
             </div>
           </button>
         </th>
@@ -70,8 +70,8 @@ function ListHead() {
               )}
             >
               <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.size")}</p>
-              {view.sortType === "SIZE:DESC" && <ArrowDownIcon size="16" />}
-              {view.sortType === "SIZE:ASC" && <ArrowUpIcon size="16" />}
+              {view.sortType === "SIZE:DESC" && <ArrowDownIcon width={16} height={16} />}
+              {view.sortType === "SIZE:ASC" && <ArrowUpIcon width={16} height={16} />}
             </div>
           </button>
         </th>
@@ -88,8 +88,8 @@ function ListHead() {
               )}
             >
               <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.date")}</p>
-              {view.sortType === "DATE:DESC" && <ArrowDownIcon size="16" />}
-              {view.sortType === "DATE:ASC" && <ArrowUpIcon size="16" />}
+              {view.sortType === "DATE:DESC" && <ArrowDownIcon width={16} height={16} />}
+              {view.sortType === "DATE:ASC" && <ArrowUpIcon width={16} height={16} />}
             </div>
           </button>
         </th>
@@ -134,7 +134,7 @@ export function ContentMenuList(props: ContentMenuProps) {
                 <div className="flex flex-row items-center gap-3">
                   <div className="flex size-11 shrink-0 items-center justify-center text-muted-foreground">
                     {isFetching && itemId === item.id ? (
-                      <LoaderIcon className="animate-spin-1.5" size="20" />
+                      <LoaderIcon className="animate-spin-1.5" width={20} height={20} />
                     ) : item.isDir && !item.preview ? (
                       <FolderIcon className="h-full w-full text-yellow-400" />
                     ) : item.preview ? (
@@ -197,9 +197,9 @@ export function ContentMenuGrid(props: ContentMenuProps) {
         >
           <div className="relative flex aspect-square items-center justify-center">
             {isFetching && itemId === item.id ? (
-              <LoaderIcon className="animate-spin-1.5" size="32" />
+              <LoaderIcon className="animate-spin-1.5" width={32} height={32} />
             ) : item.isDir && !item.preview ? (
-              <FolderIcon className="p-4 text-yellow-400" size="100" />
+              <FolderIcon className="p-4 text-yellow-400" width={100} height={100} />
             ) : item.preview?.video ? (
               <video
                 src={item.preview.video.default}
@@ -218,7 +218,7 @@ export function ContentMenuGrid(props: ContentMenuProps) {
                 loading="lazy"
               />
             ) : (
-              <FileIcon className="text-blue-400" size="32" />
+              <FileIcon className="text-blue-400" width={32} height={32} />
             )}
 
             <div className="absolute bottom-0 left-1/2 flex w-full -translate-x-1/2 flex-row items-center justify-center">

@@ -1,21 +1,21 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import {
-  AlertCircleIcon,
-  BellIcon,
-  CheckCircle2Icon,
-  DownloadIcon,
-  FolderIcon,
-  GlobeIcon,
-  ImportIcon,
-  LayoutGridIcon,
-  ListIcon,
-  Loader2Icon,
-  MonitorIcon,
-  PlusIcon,
-  SearchIcon,
-  UploadIcon,
-} from "lucide-react";
+  WarningDiamond as AlertCircleIcon,
+  Bell as BellIcon,
+  Check as CheckCircle2Icon,
+  Download as DownloadIcon,
+  Folder as FolderIcon,
+  Globe as GlobeIcon,
+  Open as ImportIcon,
+  Grid3x3 as LayoutGridIcon,
+  Bulletlist as ListIcon,
+  Loader as Loader2Icon,
+  Monitor as MonitorIcon,
+  Plus as PlusIcon,
+  Search as SearchIcon,
+  Upload as UploadIcon,
+} from "pixelarticons/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -152,7 +152,7 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t("g.download")}</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleDownload}>
-                <GlobeIcon size={18} />
+                <GlobeIcon width={18} height={18} />
                 {t("g.browser_download")}
               </DropdownMenuItem>
 
@@ -170,7 +170,7 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
                   }
                 }}
               >
-                <MonitorIcon size={18} />
+                <MonitorIcon width={18} height={18} />
                 {t("g.desktop_download")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -220,17 +220,17 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
                 className="cursor-pointer gap-3"
                 onClick={() => dialog.setOpen("createDirDialog", true)}
               >
-                <FolderIcon size={20} />
+                <FolderIcon width={20} height={20} />
                 {t("drive.ui.new_dir")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem className="cursor-pointer gap-3">
-                  <UploadIcon size={20} />
+                  <UploadIcon width={20} height={20} />
                   {t("drive.upload_dir")}
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer gap-3">
-                  <UploadIcon size={20} />
+                  <UploadIcon width={20} height={20} />
                   {t("drive.upload_file")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -437,7 +437,7 @@ export function ImportToMyDriveDialog({ of, content, link }: ImportToMyDriveDial
           variant="ghost"
           className="relative flex w-full cursor-pointer items-center justify-start gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
         >
-          <ImportIcon size={18} className="text-muted-foreground" />
+          <ImportIcon width={18} height={18} className="text-muted-foreground" />
           {t("drive.ui.import_to_drive")}
         </Button>
       </DialogTrigger>

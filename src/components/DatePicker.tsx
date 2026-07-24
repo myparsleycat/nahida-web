@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon } from "pixelarticons/react";
 import { useState } from "react";
 import type { Matcher } from "react-day-picker";
 
