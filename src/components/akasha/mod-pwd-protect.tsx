@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { setCachedModAccess } from "@/lib/akasha/services/mod-access";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
 import { eden } from "@/lib/eden";
 import { base64url } from "@/lib/utils";
@@ -43,7 +44,7 @@ export function AkashaModPwdProtect(props: AkashaModPwdProtectProps) {
   const [loading, setLoading] = useState(false);
 
   const refetch = () => {
-    router.invalidate();
+    void router.invalidate();
   };
 
   const tryit = async (e: React.FormEvent) => {
@@ -53,7 +54,7 @@ export function AkashaModPwdProtect(props: AkashaModPwdProtectProps) {
       const modStorageData = modStorage.getMod(modId);
 
       setLoading(true);
-      const { error } = await eden.akasha.mod({ modId }).get({
+      const { error, response } = await eden.akasha.mod({ modId }).get({
         query: {
           sig: modStorageData?.sig,
           ...(password && { password: base64url.encode(password) }),
@@ -61,12 +62,13 @@ export function AkashaModPwdProtect(props: AkashaModPwdProtectProps) {
       });
 
       if (!error) {
-        sessionStorage.setItem(
-          `akasha-mod:${modId}`,
-          JSON.stringify({
-            pwd: base64url.encode(password),
-          }),
-        );
+        const token = response.headers.get("x-token");
+        if (!token) {
+          setErrMsg("인증 토큰을 받지 못했습니다");
+          setTs(Date.now());
+          return;
+        }
+        setCachedModAccess(modId, { password: base64url.encode(password), token });
         refetch();
       } else {
         let msg = error.value.toString();

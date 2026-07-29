@@ -28,13 +28,17 @@ import {
 export async function getDownloadUrls({
     itemId,
     signal,
+    token,
+    sig,
 }: {
     itemId: string;
     signal?: AbortSignal;
+    token?: string;
+    sig?: string;
 }) {
     const { fpHash } = globalStore.getState();
     const url = getModDownloadUrl({ itemId });
-    const headers = buildModSseHeaders({ fpHash });
+    const headers = buildModSseHeaders({ fpHash, token, sig });
 
     return startStreamingDownload({
         url,
@@ -47,12 +51,14 @@ async function prepareDownload(
     itemId: string,
     modName: string | undefined,
     itemName: string,
+    token?: string,
+    sig?: string,
     isDesktop?: boolean,
 ) {
     const store = modStore.getState();
     store.setStatus("collecting");
 
-    const metadata = await getDownloadUrls({ itemId });
+    const metadata = await getDownloadUrls({ itemId, token, sig });
     const { directoryName, rootHandle, suggestedName } = await prepareOpfsDownloadDirectory({
         itemId,
         itemName,
@@ -76,6 +82,8 @@ interface StartDownloadForDesktopProps {
     mod?: AkashaModData | null;
     items: Content[];
     suggestedName?: string;
+    token?: string;
+    sig?: string;
 }
 
 export async function startDownloadForDesktop(props: StartDownloadForDesktopProps) {
@@ -85,7 +93,14 @@ export async function startDownloadForDesktop(props: StartDownloadForDesktopProp
         return;
     }
 
-    const prepPromise = prepareDownload(items[0].id, mod?.mod.title, items[0].name, true);
+    const prepPromise = prepareDownload(
+        items[0].id,
+        mod?.mod.title,
+        items[0].name,
+        props.token,
+        props.sig,
+        true,
+    );
 
     toast.promise(prepPromise, {
         loading: t("drive.#.processNextDownloadInQueue.toast-promise.loading"),
@@ -107,6 +122,8 @@ interface StartDownloadProps {
     mod?: AkashaModData | null;
     items: Content[];
     abortSignal?: AbortSignal;
+    token?: string;
+    sig?: string;
 }
 
 export async function startDownload(props: StartDownloadProps) {
@@ -140,7 +157,13 @@ export async function startDownload(props: StartDownloadProps) {
     let directoryName: string | null = null;
 
     try {
-        const prep = await prepareDownload(items[0].id, mod?.mod.title, items[0].name);
+        const prep = await prepareDownload(
+            items[0].id,
+            mod?.mod.title,
+            items[0].name,
+            props.token,
+            props.sig,
+        );
         directoryName = prep.directoryName;
         const { modRootHandle } = prep;
         const { mtd, files, dirs, root, totalBytes } = prep.metadata;

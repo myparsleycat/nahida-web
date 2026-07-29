@@ -131,10 +131,20 @@ export function buildDriveSseHeaders(params: { token?: string }) {
     return headers;
 }
 
-export function buildModSseHeaders(params: { fpHash: string | null }) {
+export function buildModSseHeaders(params: {
+    fpHash: string | null;
+    token?: string;
+    sig?: string;
+}) {
     const headers: Record<string, string> = {};
     if (params.fpHash) {
         headers["X-FPH"] = params.fpHash;
+    }
+    if (params.token) {
+        headers["x-token"] = params.token;
+    }
+    if (params.sig) {
+        headers["x-sig"] = params.sig;
     }
     return headers;
 }

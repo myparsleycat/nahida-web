@@ -16,6 +16,7 @@ export interface ModContextType {
   itemId?: string;
   setItemId: (v: string) => void;
   sig?: string;
+  accessToken?: string;
   isOpenInfo: boolean;
   setOpenInfo: React.Dispatch<React.SetStateAction<boolean>>;
   modQuery?: AkashaMod | null;

@@ -378,7 +378,7 @@ function ContextMenuModContentSnippet({
   session,
 }: ContextMenuModContentSnippetProps) {
   const { t } = useTranslation();
-  const { modQuery, itemQuery, sig, collectionId, isOpenInfo } = useModContext();
+  const { modQuery, itemQuery, sig, accessToken, collectionId, isOpenInfo } = useModContext();
   const { queryClient } = useRouteContext({ from: "__root__" });
   const { selectedItems } = useContentSelection();
 
@@ -404,7 +404,9 @@ function ContextMenuModContentSnippet({
                 <DropdownMenuLabel>{t("g.download")}</DropdownMenuLabel>
                 <ContextMenuItem
                   className="gap-x-2"
-                  onClick={() => startDownload({ items: selectedItems })}
+                  onClick={() =>
+                    void startDownload({ items: selectedItems, token: accessToken, sig })
+                  }
                 >
                   <GlobeIcon width={18} height={18} />
                   {t("g.browser_download")}
@@ -412,7 +414,9 @@ function ContextMenuModContentSnippet({
 
                 <ContextMenuItem
                   className="gap-x-2"
-                  onClick={() => startDownloadForDesktop({ items: selectedItems })}
+                  onClick={() =>
+                    void startDownloadForDesktop({ items: selectedItems, token: accessToken, sig })
+                  }
                 >
                   <MonitorIcon width={18} height={18} />
                   {t("g.desktop_download")}
@@ -423,7 +427,12 @@ function ContextMenuModContentSnippet({
 
               {session && (
                 <ContextMenuItem asChild>
-                  <ImportToMyDriveDialog of="mod" content={selectedItems[0]} />
+                  <ImportToMyDriveDialog
+                    of="mod"
+                    content={selectedItems[0]}
+                    modAccessToken={accessToken}
+                    modSig={sig}
+                  />
                 </ContextMenuItem>
               )}
             </>

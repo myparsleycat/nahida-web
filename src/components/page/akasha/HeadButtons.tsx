@@ -69,10 +69,12 @@ interface AkashaHeadButtonsProps {
     token: string;
   };
   modQuery?: AkashaModData | null;
+  modAccessToken?: string;
+  modSig?: string;
 }
 
 export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
-  const { of, content, link, modQuery } = props;
+  const { of, content, link, modQuery, modAccessToken, modSig } = props;
   const { t } = useTranslation();
   const dialog = useDialogStore();
   const view = useContentView();
@@ -91,7 +93,12 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
 
     try {
       if (of === "mod") {
-        startDownload({ mod: modQuery, items: [content] });
+        await startDownload({
+          mod: modQuery,
+          items: [content],
+          token: modAccessToken,
+          sig: modSig,
+        });
         return;
       }
 
@@ -162,6 +169,8 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
                     await startDownloadForDesktop({
                       items: [content],
                       suggestedName: modQuery?.mod.title,
+                      token: modAccessToken,
+                      sig: modSig,
                     });
                   } else if (of === "drive") {
                     await startAkashaDownloadForDesktop({ item: content });
@@ -179,7 +188,13 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
 
             {session && of !== "drive" && (
               <DropdownMenuItem asChild>
-                <ImportToMyDriveDialog of={of} content={content} link={link} />
+                <ImportToMyDriveDialog
+                  of={of}
+                  content={content}
+                  link={link}
+                  modAccessToken={modAccessToken}
+                  modSig={modSig}
+                />
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -264,6 +279,8 @@ interface ImportToMyDriveDialogProps {
     token: string;
   };
   modQuery?: AkashaModData | null;
+  modAccessToken?: string;
+  modSig?: string;
 }
 
 type ImportStatusType = "init" | "updating_metadata";
@@ -284,7 +301,13 @@ interface ImportCompleteData {
   totalDirs: number;
 }
 
-export function ImportToMyDriveDialog({ of, content, link }: ImportToMyDriveDialogProps) {
+export function ImportToMyDriveDialog({
+  of,
+  content,
+  link,
+  modAccessToken,
+  modSig,
+}: ImportToMyDriveDialogProps) {
   const { t } = useTranslation();
   const { data: session } = useSession();
 
@@ -383,6 +406,14 @@ export function ImportToMyDriveDialog({ of, content, link }: ImportToMyDriveDial
           dest: currentFolder.id,
           ...(link && { linkId: link.linkId, linkToken: link.token }),
         },
+        ...(of === "mod"
+          ? {
+              headers: {
+                ...(modSig && { "x-sig": modSig }),
+                ...(modAccessToken && { "x-token": modAccessToken }),
+              },
+            }
+          : {}),
       });
 
       if (error) throw new Error(error.value?.toString() || "요청 실패");

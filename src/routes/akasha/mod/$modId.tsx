@@ -16,6 +16,7 @@ import { Center, ServerCrash, AliceLoader, Random1619 } from "@/components/commo
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import ModContext from "@/context/ModContext";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
+import { getCachedModAccess, setCachedModAccess } from "@/lib/akasha/services/mod-access";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
 import { eden } from "@/lib/eden";
 import { base64url, cn } from "@/lib/utils";
@@ -26,15 +27,8 @@ export const Route = createFileRoute("/akasha/mod/$modId")({
   loader: async ({ params }) => {
     const { modId } = params;
 
-    let pwd: string | null = null;
-    const cachedData = sessionStorage.getItem(`akasha-mod:${modId}`);
-    if (cachedData) {
-      const { pwd: $$ } = JSON.parse(cachedData);
-      pwd = $$;
-    }
+    const cachedAccess = getCachedModAccess(modId);
     const modStorageData = modStorage.getMod(modId);
-
-    const password = pwd ? pwd : undefined;
 
     const {
       data,
@@ -43,9 +37,15 @@ export const Route = createFileRoute("/akasha/mod/$modId")({
     } = await eden.akasha.mod({ modId }).get({
       query: {
         sig: modStorageData?.sig,
-        ...(password && { password }),
+        ...(cachedAccess.password && { password: cachedAccess.password }),
       },
+      ...(cachedAccess.token && { headers: { "x-token": cachedAccess.token } }),
     });
+
+    const accessToken = resp.headers.get("x-token") ?? cachedAccess.token;
+    if (!error && accessToken) {
+      setCachedModAccess(modId, { password: cachedAccess.password, token: accessToken });
+    }
 
     const previewHeader = resp.headers.get("x-preview");
     const preview: { mime: string; url: string } | undefined = previewHeader
@@ -69,6 +69,7 @@ export const Route = createFileRoute("/akasha/mod/$modId")({
       modData: !error ? data : undefined,
       sig: modStorageData?.sig,
       preview,
+      accessToken,
     };
 
     return payload;
@@ -86,7 +87,7 @@ export const Route = createFileRoute("/akasha/mod/$modId")({
 });
 
 function RouteComponent() {
-  const { status, errTxt, modData, sig, preview } = Route.useLoaderData();
+  const { status, errTxt, modData, sig, preview, accessToken } = Route.useLoaderData();
   const { modId } = Route.useParams();
   const navi = useNavigate();
   const isMobile = useIsMobileWidth();
@@ -152,9 +153,14 @@ function RouteComponent() {
   }, [modData, collectionId]);
 
   const itemQuery = useQuery({
-    queryKey: ["akasha", "mod", "item", itemId],
+    queryKey: ["akasha", "mod", "item", itemId, accessToken],
     queryFn: async () => {
-      const { data, error } = await eden.akasha.mod.item({ itemId }).get();
+      const { data, error } = await eden.akasha.mod.item({ itemId }).get({
+        headers: {
+          ...(sig && { "x-sig": sig }),
+          ...(accessToken && { "x-token": accessToken }),
+        },
+      });
 
       if (error) {
         if (error.status === 404) {
@@ -203,6 +209,7 @@ function RouteComponent() {
     itemId,
     setItemId: handleSetItemId,
     sig,
+    accessToken,
     isOpenInfo,
     setOpenInfo,
     modQuery: modData,

@@ -43,7 +43,7 @@ export function AkashaModContents(props: AkashaModBaseProps) {
 
   const drag = useContentDrag();
   const { onDragEnter, onDragLeave, onDragOver, onDrop } = useHandler();
-  const { modQuery, sig, collectionId, setItemId, setOpenInfo } = useModContext();
+  const { modQuery, sig, accessToken, collectionId, setItemId, setOpenInfo } = useModContext();
   const isMobile = useIsMobileWidth();
 
   const rawContents = useMemo(() => {
@@ -99,7 +99,13 @@ export function AkashaModContents(props: AkashaModBaseProps) {
           </Button>
         )}
 
-        <AkashaHeadButtons of="mod" content={content} modQuery={modQuery} />
+        <AkashaHeadButtons
+          of="mod"
+          content={content}
+          modQuery={modQuery}
+          modAccessToken={accessToken}
+          modSig={sig}
+        />
       </div>
 
       <div
