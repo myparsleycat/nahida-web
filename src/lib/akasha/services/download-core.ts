@@ -101,8 +101,7 @@ export function startStreamingDownload(params: {
 
         worker.postMessage({
             url: url.toString(),
-            token: headers?.["nhd-link-token"],
-            fpHash: headers?.["X-FPH"],
+            headers,
         });
     });
 }

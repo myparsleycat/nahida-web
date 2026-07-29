@@ -25,7 +25,7 @@ const processStreamedData = async (jsonString: string) => {
 let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
 self.onmessage = async (event) => {
-    const { url, token, fpHash, type: msgType } = event.data;
+    const { url, headers, type: msgType } = event.data;
 
     if (msgType === "abort") {
         if (activeReader) {
@@ -42,8 +42,7 @@ self.onmessage = async (event) => {
         const resp = await ky.get(url, {
             headers: {
                 Accept: "text/event-stream",
-                ...(fpHash && { "X-FPH": fpHash }),
-                ...(token && { "nhd-link-token": token }),
+                ...headers,
             },
             credentials: "include",
         });
