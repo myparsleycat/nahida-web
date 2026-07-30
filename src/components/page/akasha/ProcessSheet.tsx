@@ -51,7 +51,14 @@ function PersistentUploadSessions() {
     const completed = snapshot.targets.filter((target) =>
       ["created", "exists", "completed"].includes(target.status),
     ).length;
-    const failed = snapshot.targets.length - completed;
+    const failed = snapshot.targets.filter((target) =>
+      ["denied", "failed", "cancelled"].includes(target.status),
+    ).length;
+    const progress = snapshot.targets.length
+      ? (completed / snapshot.targets.length) * 100
+      : snapshot.session.status === "completed"
+        ? 100
+        : 0;
     const actions = getUploadSessionActionAvailability(snapshot);
     const runAction = (action: () => Promise<void>) =>
       action().catch((error) => {
@@ -61,20 +68,23 @@ function PersistentUploadSessions() {
       });
 
     return (
-      <section
-        key={snapshot.session.requestId}
-        className="flex flex-col gap-3 border-b pb-4 last:border-b-0"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <strong className="block truncate">{snapshot.session.name}</strong>
-            <small className="text-muted-foreground">
-              {t(`upload.transfer.status.${snapshot.session.status}`, {
-                defaultValue: snapshot.session.status,
-              })}
-              {` · ${completed}/${snapshot.targets.length}`}
-              {failed > 0 ? ` · ${t("upload.transfer.summary.failed", { count: failed })}` : ""}
-            </small>
+      <section key={snapshot.session.requestId} className="flex flex-col gap-2 border-b pb-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex aspect-square w-10 shrink-0 items-center justify-center bg-secondary p-1">
+              {snapshot.session.directories.length > 0 ? (
+                <FolderIcon className="h-6 w-6" />
+              ) : (
+                <FileIcon className="h-6 w-6" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate">{snapshot.session.name}</p>
+              <small className="text-muted-foreground">
+                {formatSize(snapshot.session.totalBytes)} · {completed}/{snapshot.targets.length}
+                {failed > 0 ? ` · ${t("upload.transfer.summary.failed", { count: failed })}` : ""}
+              </small>
+            </div>
           </div>
           <div className="flex shrink-0 gap-2">
             {actions.canRetry && (
@@ -106,33 +116,16 @@ function PersistentUploadSessions() {
             )}
           </div>
         </div>
-
-        <div className="max-h-52 overflow-y-auto border">
-          {snapshot.targets.map((target) => (
-            <div
-              key={target.clientId}
-              className="flex items-start justify-between gap-3 border-b p-2 last:border-b-0"
-            >
-              <div className="min-w-0">
-                <span className="block truncate">{target.name}</span>
-                <small className="text-muted-foreground">{formatSize(target.size)}</small>
-              </div>
-              <div className="max-w-48 text-right">
-                <small>
-                  {t(`upload.transfer.status.${target.status}`, {
-                    defaultValue: target.status,
-                  })}
-                </small>
-                {target.reason && (
-                  <small className="block break-words text-destructive">
-                    {t(`upload.transfer.reason.${target.reason}`, {
-                      defaultValue: target.reason,
-                    })}
-                  </small>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between gap-3 text-muted-foreground">
+            <small>
+              {t(`upload.transfer.status.${snapshot.session.status}`, {
+                defaultValue: snapshot.session.status,
+              })}
+            </small>
+            <small>{Math.round(progress)}%</small>
+          </div>
+          <Progress value={progress} className="h-1" />
         </div>
       </section>
     );

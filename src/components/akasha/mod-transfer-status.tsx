@@ -1,21 +1,19 @@
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Archive as FileArchiveIcon, File as FileIcon } from "pixelarticons/react";
 import { forwardRef, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/policy";
 import { cn, formatSize } from "@/lib/utils";
+import { useModStore } from "@/stores/akasha-mod.store";
 import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
+import { AliceLoader } from "../common";
 import { AnimatedBeam } from "../magicui/animated-beam";
+import { Progress } from "../ui/progress";
 
 // export function TransferStatus() {
 //   const { totalItems, sentItems } = useModStore();
@@ -133,102 +131,122 @@ export function Archiving() {
 }
 
 export function TransferDialog() {
+  const transfer = useModStore();
   const uploadSessions = useUploadSessionStore();
   const { t } = useTranslation();
   const snapshots = Object.values(uploadSessions.snapshots).filter(
     (snapshot) => snapshot.session.kind === "mod",
   );
+  const upload =
+    snapshots.find(
+      (snapshot) =>
+        !["completed", "partial", "failed", "paused", "cancelled"].includes(
+          snapshot.session.status,
+        ),
+    ) ??
+    snapshots.find((snapshot) => ["partial", "failed", "paused"].includes(snapshot.session.status));
+  const actions = upload && getUploadSessionActionAvailability(upload);
+  const hasError = upload && ["partial", "failed", "paused"].includes(upload.session.status);
+  const completedTargets = upload?.targets.filter((target) =>
+    ["created", "exists", "completed"].includes(target.status),
+  );
+  const status = upload
+    ? hasError
+      ? "failed"
+      : upload.session.status === "staging"
+        ? "collecting"
+        : ["creating_directories", "hashing", "planning"].includes(upload.session.status)
+          ? "hashing"
+          : "transmitting"
+    : transfer.status;
+  const totalItems = upload?.targets.length ?? transfer.totalItems;
+  const sentItems = completedTargets?.length ?? transfer.sentItems;
+  const totalBytes = upload?.session.totalBytes ?? transfer.totalBytes;
+  const sentBytes =
+    completedTargets?.reduce((sum, target) => sum + target.size, 0) ?? transfer.sentBytes;
+  const progress = upload
+    ? totalBytes
+      ? Math.min((sentBytes / totalBytes) * 100, 100)
+      : upload.session.status === "completed"
+        ? 100
+        : 0
+    : transfer.progress;
+  const displayItems = Math.min(totalItems, 256);
+  const displaySentItems =
+    totalItems > 256 ? Math.floor((sentItems / totalItems) * 256) : sentItems;
+  const gridCols = Math.ceil(Math.sqrt(displayItems));
 
   return (
-    <Dialog open={snapshots.length > 0}>
-      <DialogContent showCloseButton={false} aria-describedby={undefined}>
+    <Dialog open={status !== "pending"}>
+      <VisuallyHidden>
         <DialogHeader>
-          <DialogTitle>{t("upload.transfer.title")}</DialogTitle>
-          <DialogDescription>{t("upload.transfer.description")}</DialogDescription>
+          <DialogTitle>Transferring Items</DialogTitle>
         </DialogHeader>
-        <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto">
-          {snapshots.map((snapshot) => {
-            const completed = snapshot.targets.filter((target) =>
-              ["created", "exists", "completed"].includes(target.status),
-            ).length;
-            const actions = getUploadSessionActionAvailability(snapshot);
-            const runAction = (action: () => Promise<void>) =>
-              action().catch((error) => {
-                toast.error(t("upload.transfer.action_error"), {
-                  description: error instanceof Error ? error.message : String(error),
-                });
-              });
-            return (
-              <section key={snapshot.session.requestId} className="border bg-card p-3">
-                <div className="flex items-start justify-between gap-3 border-b pb-2">
-                  <div className="min-w-0">
-                    <strong className="block truncate">{snapshot.session.name}</strong>
-                    <small className="text-muted-foreground">
-                      {completed}/{snapshot.targets.length} ·{" "}
-                      {formatSize(snapshot.session.totalBytes)}
-                    </small>
-                  </div>
-                  <div className="flex gap-2">
-                    {actions.canRetry && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClickPromise={() =>
-                          runAction(() => uploadSessions.retry(snapshot.session.requestId))
-                        }
-                      >
-                        {t("upload.transfer.action.retry")}
-                      </Button>
-                    )}
-                    {actions.canCancel && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClickPromise={() =>
-                          runAction(() => uploadSessions.dismiss(snapshot.session.requestId))
-                        }
-                      >
-                        {t("upload.transfer.action.cancel")}
-                      </Button>
-                    )}
-                    {actions.canDismiss && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClickPromise={() =>
-                          runAction(() => uploadSessions.dismiss(snapshot.session.requestId))
-                        }
-                      >
-                        {t("upload.transfer.action.dismiss")}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  {snapshot.targets.map((target) => (
+      </VisuallyHidden>
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <div className="flex min-h-[18.5rem] flex-col items-center justify-center gap-y-4">
+          {status === "hashing" || status === "collecting" ? (
+            <>
+              <p className="font-semibold">
+                {status === "hashing" ? "Hashing..." : "Collecting Files..."}
+              </p>
+              <AliceLoader />
+            </>
+          ) : status === "transmitting" ? (
+            <>
+              <p className="font-semibold">Transmitting...</p>
+              {displayItems > 0 && (
+                <div
+                  className="grid h-64 w-64 gap-1 border p-1"
+                  style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
+                >
+                  {Array.from({ length: displayItems }).map((_, index) => (
                     <div
-                      key={target.clientId}
-                      className="flex items-start justify-between gap-3 border-b py-2 last:border-b-0"
-                    >
-                      <span className="min-w-0 truncate">{target.name}</span>
-                      <small className="max-w-48 text-right">
-                        {t(`upload.transfer.status.${target.status}`, {
-                          defaultValue: target.status,
-                        })}
-                        {target.reason && (
-                          <span className="block break-words text-destructive">
-                            {t(`upload.transfer.reason.${target.reason}`, {
-                              defaultValue: target.reason,
-                            })}
-                          </span>
-                        )}
-                      </small>
-                    </div>
+                      key={index}
+                      className={index < displaySentItems ? "bg-foreground" : "bg-muted"}
+                    />
                   ))}
                 </div>
-              </section>
-            );
-          })}
+              )}
+              <small>
+                {formatSize(sentBytes)} / {formatSize(totalBytes)} | {formatSize(transfer.speed)}/s
+              </small>
+              <Progress value={progress} />
+            </>
+          ) : status === "failed" && upload && actions ? (
+            <>
+              <p className="font-semibold">{t("upload.transfer.status.failed")}</p>
+              <small className="text-muted-foreground">
+                {upload.session.name} · {sentItems}/{totalItems}
+              </small>
+              <div className="flex gap-2">
+                {actions.canRetry && (
+                  <Button
+                    variant="outline"
+                    onClickPromise={() =>
+                      uploadSessions.retry(upload.session.requestId).catch((error) => {
+                        toast.error(t("upload.transfer.action_error"), {
+                          description: error instanceof Error ? error.message : String(error),
+                        });
+                      })
+                    }
+                  >
+                    {t("upload.transfer.action.retry")}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClickPromise={() => uploadSessions.dismiss(upload.session.requestId)}
+                >
+                  {t("upload.transfer.action.dismiss")}
+                </Button>
+              </div>
+            </>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
