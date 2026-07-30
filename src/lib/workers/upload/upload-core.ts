@@ -353,7 +353,7 @@ export function createUploadCore(deps: UploadDeps) {
         filesToUpload: ProcessedFileEntry[],
         onFileUploaded: (fid: string) => void,
     ): Promise<string[]> => {
-        const queue = new PQueue({ concurrency: 4 });
+        const queue = new PQueue({ concurrency: 8 });
         const uploadedFileIds: string[] = [];
 
         const processUploadTask = async (fileInfo: ProcessedFileEntry): Promise<void> => {

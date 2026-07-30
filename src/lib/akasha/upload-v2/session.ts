@@ -368,7 +368,7 @@ async function ensurePlan(snapshot: UploadSessionSnapshot) {
 async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
     const session = await setSessionStatus(snapshot.session, "uploading");
     snapshot = { ...snapshot, session };
-    const limit = pLimit(4);
+    const limit = pLimit(8);
     await Promise.all(
         snapshot.intents
             .filter((intent) => intent.state !== "completed")
