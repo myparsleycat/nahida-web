@@ -141,7 +141,12 @@ export function ProcessSheet(props: ProcessSheetProps) {
 
   const uploads = upload.queue.length + (upload.current ? 1 : 0);
   const downloads = download.queue.length + (download.current ? 1 : 0);
-  const total = uploads + downloads + Object.keys(persistentUploads.snapshots).length;
+  const persistentSnapshots = Object.values(persistentUploads.snapshots);
+  const activePersistent = persistentSnapshots.filter(
+    (snapshot) => !["completed", "partial", "cancelled"].includes(snapshot.session.status),
+  ).length;
+  const active = uploads + downloads + activePersistent;
+  const total = uploads + downloads + persistentSnapshots.length;
 
   return (
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -149,7 +154,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
         <SheetTrigger asChild>{children}</SheetTrigger>
       ) : variants ? (
         <SheetTrigger className={cn(buttonVariants({ variant: variants, size: "icon" }))}>
-          {total ? (
+          {active ? (
             <Loader2Icon className="h-full w-full animate-spin" />
           ) : (
             <ArrowUpDownIcon className="h-full w-full" />
@@ -157,7 +162,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
         </SheetTrigger>
       ) : (
         <SheetTrigger className="flex flex-row items-center justify-center rounded-lg p-2 font-semibold text-muted-foreground transition-colors hover:text-primary">
-          {total ? (
+          {active ? (
             <Loader2Icon className="h-full w-full animate-spin" />
           ) : (
             <ArrowUpDownIcon className="h-full w-full" />
