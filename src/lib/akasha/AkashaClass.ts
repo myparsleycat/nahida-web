@@ -8,8 +8,7 @@ import type { WorkerMessage } from "@/lib/workers/akasha.worker";
 import { contentDragStore } from "@/hooks/akasha";
 import { queryClient } from "@/integrations/queryClient";
 import { eden } from "@/lib/eden";
-import i18n from "@/lib/i18n";
-import { Decompressor, normalizePath, validateExt } from "@/lib/utils";
+import { Decompressor, normalizePath } from "@/lib/utils";
 import akashaWorker from "@/lib/workers/akasha.worker?worker";
 import { dialogStore } from "@/stores/akasha-dialog.store";
 import { akashaStore } from "@/stores/akasha-queue.store";
@@ -23,11 +22,11 @@ import {
     assignTaskToWorker,
     completeCurrentUpload,
     processNextTask,
-    processNextUploadInQueue,
     processUploadQueue,
     setAkashaWorker,
     updateCurrentUploadStatus,
 } from "./services/upload";
+import { startPersistentUpload } from "./upload-v2/session";
 
 class AkashaClass {
     private _store?: ReturnType<typeof akashaStore.getState>;
@@ -331,13 +330,22 @@ class AkashaClass {
     ULProcess = {
         enqueueUpload: (upload: Omit<QueuedProcess, "pid">) => {
             const pid = nanoid();
-            const queuedUpload = { ...upload, pid };
-
-            this.store.addToUploadQueue(queuedUpload);
-
-            if (!this.store.upload.isProcessing && !this.store.upload.current) {
-                processNextUploadInQueue();
-            }
+            const files = upload.files.map((file) => {
+                const clientId = file.clientId || crypto.randomUUID();
+                return { ...file, FID: clientId, clientId };
+            });
+            this.changeTransferSheetOpen(true);
+            void startPersistentUpload({
+                kind: "drive",
+                name: upload.name,
+                current: upload.parentUUID!,
+                files,
+                directories: upload.directories,
+            }).catch((error: unknown) => {
+                toast.error(t("upload.transfer.summary.failed", { count: files.length }), {
+                    description: error instanceof Error ? error.message : "upload_failed",
+                });
+            });
 
             return pid;
         },
@@ -357,19 +365,6 @@ class AkashaClass {
         const directories = entries.filter(
             (entry): entry is FileSystemDirectoryEntry => entry.isDirectory,
         );
-
-        if (entries.length === 1 && entries[0].isFile) {
-            const fileEntry = entries[0] as FileSystemFileEntry;
-            const file = await new Promise<File>((resolve, reject) => {
-                fileEntry.file(resolve, reject);
-            });
-            if (!validateExt(file.name)) {
-                toast.warning(`${i18n.t("drive.not_validateExt.0")}`, {
-                    description: `${i18n.t("drive.not_validateExt.1")}`,
-                });
-                return;
-            }
-        }
 
         const collectedFiles = await Promise.all(entries.map((entry) => collectFiles(entry)));
         const allFiles = collectedFiles.flat();

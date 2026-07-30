@@ -1,26 +1,21 @@
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import {
-  Archive as ArchiveIcon,
-  Archive as FileArchiveIcon,
-  File as FileIcon,
-  Loader as Loader2,
-} from "pixelarticons/react";
+import { Archive as FileArchiveIcon, File as FileIcon } from "pixelarticons/react";
 import { forwardRef, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/policy";
 import { cn, formatSize } from "@/lib/utils";
-import { useModStore } from "@/stores/akasha-mod.store";
+import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
-import { AliceLoader, Center } from "../common";
 import { AnimatedBeam } from "../magicui/animated-beam";
-import { Progress } from "../ui/progress";
 
 // export function TransferStatus() {
 //   const { totalItems, sentItems } = useModStore();
@@ -138,68 +133,126 @@ export function Archiving() {
 }
 
 export function TransferDialog() {
-  const { status, totalItems, sentItems, totalBytes, sentBytes, speed, progress } = useModStore();
-
-  const MAX_VISUAL_ITEMS = 256;
-
-  const displayItems = Math.min(totalItems, MAX_VISUAL_ITEMS);
-
-  const displaySentItems =
-    totalItems > MAX_VISUAL_ITEMS
-      ? Math.floor((sentItems / totalItems) * MAX_VISUAL_ITEMS)
-      : sentItems;
-
-  const gridCols = Math.ceil(Math.sqrt(displayItems));
+  const uploadSessions = useUploadSessionStore();
+  const { t } = useTranslation();
+  const snapshots = Object.values(uploadSessions.snapshots).filter(
+    (snapshot) => snapshot.session.kind === "mod",
+  );
 
   return (
-    <Dialog open={status !== "pending"}>
-      <VisuallyHidden>
+    <Dialog open={snapshots.length > 0}>
+      <DialogContent showCloseButton={false} aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>Transferring Items</DialogTitle>
+          <DialogTitle>{t("upload.transfer.title")}</DialogTitle>
+          <DialogDescription>{t("upload.transfer.description")}</DialogDescription>
         </DialogHeader>
-      </VisuallyHidden>
-      <DialogContent
-        showCloseButton={false}
-        aria-describedby={undefined}
-        onInteractOutside={(e) => {
-          e.preventDefault();
-        }}
-      >
-        <div className="flex min-h-[18.5rem] flex-col items-center justify-center gap-y-4">
-          {status === "hashing" ? (
-            <>
-              <p className="text-lg font-semibold">Hashing...</p>
-              <AliceLoader />
-            </>
-          ) : status === "collecting" ? (
-            <>
-              <p className="text-lg font-semibold">Collecting Files...</p>
-              <AliceLoader />
-            </>
-          ) : status === "transmitting" ? (
-            <>
-              <p className="text-lg font-semibold">Transmitting...</p>
-              <div
-                className="grid h-64 w-64 gap-1 rounded-lg border p-1"
-                style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
-              >
-                {Array.from({ length: displayItems }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`rounded-xs ${
-                      i < displaySentItems ? "bg-green-500" : "bg-gray-200"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-sm">
-                {formatSize(sentBytes)} / {formatSize(totalBytes)} (압축됨) | {formatSize(speed)}/s
-              </p>
-              <Progress value={progress} />
-            </>
-          ) : (
-            <></>
-          )}
+        <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto">
+          {snapshots.map((snapshot) => {
+            const completed = snapshot.targets.filter((target) =>
+              ["created", "exists", "completed"].includes(target.status),
+            ).length;
+            const actions = getUploadSessionActionAvailability(snapshot);
+            const runAction = (action: () => Promise<void>) =>
+              action().catch((error) => {
+                toast.error(t("upload.transfer.action_error"), {
+                  description: error instanceof Error ? error.message : String(error),
+                });
+              });
+            return (
+              <section key={snapshot.session.requestId} className="border bg-card p-3">
+                <div className="flex items-start justify-between gap-3 border-b pb-2">
+                  <div className="min-w-0">
+                    <strong className="block truncate">{snapshot.session.name}</strong>
+                    <small className="text-muted-foreground">
+                      {completed}/{snapshot.targets.length} ·{" "}
+                      {formatSize(snapshot.session.totalBytes)}
+                    </small>
+                  </div>
+                  <div className="flex gap-2">
+                    {actions.canRetry && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClickPromise={() =>
+                          runAction(() => uploadSessions.retry(snapshot.session.requestId))
+                        }
+                      >
+                        {t("upload.transfer.action.retry")}
+                      </Button>
+                    )}
+                    {actions.canCancel && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClickPromise={() =>
+                          runAction(() => uploadSessions.dismiss(snapshot.session.requestId))
+                        }
+                      >
+                        {t("upload.transfer.action.cancel")}
+                      </Button>
+                    )}
+                    {actions.canDismiss && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClickPromise={() =>
+                          runAction(() => uploadSessions.dismiss(snapshot.session.requestId))
+                        }
+                      >
+                        {t("upload.transfer.action.dismiss")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  {snapshot.targets.map((target) => (
+                    <div
+                      key={target.clientId}
+                      className="flex items-start justify-between gap-3 border-b py-2 last:border-b-0"
+                    >
+                      <span className="min-w-0 truncate">{target.name}</span>
+                      <small className="max-w-48 text-right">
+                        {t(`upload.transfer.status.${target.status}`, {
+                          defaultValue: target.status,
+                        })}
+                        {target.reason && (
+                          <span className="block break-words text-destructive">
+                            {t(`upload.transfer.reason.${target.reason}`, {
+                              defaultValue: target.reason,
+                            })}
+                          </span>
+                        )}
+                        {target.status === "recovery_required" && (
+                          <Button asChild variant="outline" size="sm" className="mt-2">
+                            <label>
+                              {t("upload.transfer.action.select_file")}
+                              <input
+                                className="sr-only"
+                                type="file"
+                                onChange={(event) => {
+                                  const file = event.currentTarget.files?.[0];
+                                  if (file) {
+                                    void runAction(() =>
+                                      uploadSessions.replaceSource(
+                                        snapshot.session.requestId,
+                                        target.clientId,
+                                        file,
+                                      ),
+                                    );
+                                  }
+                                  event.currentTarget.value = "";
+                                }}
+                              />
+                            </label>
+                          </Button>
+                        )}
+                      </small>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </DialogContent>
     </Dialog>

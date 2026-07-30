@@ -15,6 +15,10 @@ export async function cleanupOldOpfsDirectories() {
                 continue;
             }
 
+            if (entry.name === "akasha_uploads") {
+                continue;
+            }
+
             const parts = entry.name.split("_");
             if (parts.length < 2) {
                 continue;

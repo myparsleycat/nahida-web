@@ -15,6 +15,7 @@ export type CreateManyResults = Treaty.Data<typeof $fileCreateMany>;
 // File/Directory Info Types
 export type FileInfoComponent = {
     FID: string;
+    clientId: string;
     path: string;
     name: string;
     size: number;
@@ -24,6 +25,7 @@ export type FileInfoComponent = {
 
 export type FileInfoWorker = {
     FID: string;
+    clientId: string;
     path: string;
     name: string;
     size: number;

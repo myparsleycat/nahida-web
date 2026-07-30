@@ -1,5 +1,6 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AliceLoader, Center } from "@/components/common";
@@ -10,6 +11,7 @@ import { SidePanel } from "@/components/layout/SidePanel";
 import { buttonVariants } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
+import { resumeIncompleteUploads } from "@/lib/akasha/upload-v2/session";
 import { eden } from "@/lib/eden";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,10 @@ function RootComponent() {
   const isWorking = query.isLoading || query.isFetching;
   const { announcements, dismiss } = useAnnouncementBanner();
   const isMobile = useIsMobileWidth();
+
+  useEffect(() => {
+    void resumeIncompleteUploads();
+  }, []);
 
   if (query.isLoading) {
     return (

@@ -1,6 +1,5 @@
 import { useNavigate, useParams, useRouteContext } from "@tanstack/react-router";
 import { fileTypeFromBuffer } from "file-type";
-import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -69,7 +68,7 @@ export function HandlerProvider(props: HandlerProviderProps) {
 
         if (e.ctrlKey || e.metaKey) {
           if (currentIndex !== -1 && sortedContents[currentIndex]?.isDir) {
-            navi({
+            void navi({
               to: "/akasha/drive/$itemId",
               params: { itemId: sortedContents[currentIndex].id },
             });
@@ -91,7 +90,7 @@ export function HandlerProvider(props: HandlerProviderProps) {
 
         if (e.ctrlKey || e.metaKey) {
           if (query.data?.parent) {
-            navi({
+            void navi({
               to: "/akasha/drive/$itemId",
               params: {
                 itemId: query.data.parent.id,
@@ -203,13 +202,15 @@ export function HandlerProvider(props: HandlerProviderProps) {
             toast.promise(promise, {
               loading: `${t("#.moveItems.toast-promise.loading")}`,
               success: () => {
-                queryClient.refetchQueries({
+                void queryClient.refetchQueries({
                   queryKey: ["akasha", "drive", "item"],
                 });
                 return `${t("#.moveItems.toast-promise.success")}`;
               },
-              error: (err: any) =>
-                `${t("#.moveItems.toast-promise.error", { values: { error: err.message } })}`,
+              error: (err: unknown) =>
+                `${t("#.moveItems.toast-promise.error", {
+                  values: { error: err instanceof Error ? err.message : String(err) },
+                })}`,
             });
           } else if (copyOrCuts.action === "copy") {
             const itemsToCopy = [...copyOrCuts.items];
@@ -222,12 +223,13 @@ export function HandlerProvider(props: HandlerProviderProps) {
             toast.promise(promise, {
               loading: "복사 중...",
               success: () => {
-                queryClient.refetchQueries({
+                void queryClient.refetchQueries({
                   queryKey: ["akasha", "drive", "item"],
                 });
                 return "복사되었습니다";
               },
-              error: (err: any) => `복사 실패: ${err.message}`,
+              error: (err: unknown) =>
+                `복사 실패: ${err instanceof Error ? err.message : String(err)}`,
             });
           }
         } else {
@@ -245,8 +247,10 @@ export function HandlerProvider(props: HandlerProviderProps) {
           const arrbuf = await file.arrayBuffer();
           const ext = (await fileTypeFromBuffer(arrbuf))?.ext;
 
+          const clientId = crypto.randomUUID();
           const f = {
-            FID: nanoid(),
+            FID: clientId,
+            clientId,
             path: "",
             name: `preview.${ext}`,
             size: file.size,
@@ -281,6 +285,11 @@ export function HandlerProvider(props: HandlerProviderProps) {
       setSelectedItems,
       setLastSelectedIdx,
       setCopyOrCuts,
+      mutation.moveMutation.mutateAsync,
+      mutation.copyMutation.mutateAsync,
+      param.itemId,
+      queryClient,
+      t,
     ],
   );
 

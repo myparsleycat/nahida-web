@@ -1,9 +1,5 @@
-import { nanoid } from "nanoid";
-
 import type { Content } from "@/lib/akasha/types";
 import type { FileInfoComponent } from "@/lib/workers/akasha.worker";
-
-import { validateExt } from "@/lib/utils";
 
 import type { DirectoryInfo } from "./fs.worker";
 
@@ -51,21 +47,19 @@ export async function collectDirectoryStructure(
 export async function collectFiles(
     entry: FileSystemEntry,
     basePath: string = "",
-    additionalExt: string[] = [],
+    _additionalExt: string[] = [],
 ): Promise<FileInfoComponent[]> {
     if (entry.isFile) {
         const fileEntry = entry as FileSystemFileEntry;
         return new Promise((resolve) => {
             fileEntry.file((file) => {
                 const path = basePath ? `${basePath}/${fileEntry.name}` : fileEntry.name;
-                if (!validateExt(fileEntry.name, additionalExt)) {
-                    resolve([]);
-                    return;
-                }
                 const parentPath = basePath || "";
+                const clientId = crypto.randomUUID();
                 resolve([
                     {
-                        FID: nanoid(),
+                        FID: clientId,
+                        clientId,
                         path,
                         name: fileEntry.name,
                         size: file.size,
@@ -134,12 +128,12 @@ async function getAllFiles(entries: FileSystemEntry[]): Promise<File[]> {
     return nestedFiles.flat();
 }
 
-export function processEntriesWithWorker(
+export async function processEntriesWithWorker(
     entries: FileSystemEntry[],
 ): Promise<{ allFiles: FileInfoComponent[]; allDirectories: DirectoryInfo[] }> {
-    return new Promise(async (resolve, reject) => {
-        const allFileObjects = await getAllFiles(entries);
+    const allFileObjects = await getAllFiles(entries);
 
+    return new Promise((resolve, reject) => {
         const worker = new fsWorker();
 
         worker.onmessage = (event) => {

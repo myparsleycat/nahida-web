@@ -7,64 +7,170 @@ import {
   Loader as Loader2Icon,
   Loader as LoaderIcon,
 } from "pixelarticons/react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { akasha, useAkashaStore, type CurrentProcess } from "@/lib/akasha";
+import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/policy";
 import { cn, formatSize } from "@/lib/utils";
+import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
 interface ProcessSheetProps {
   children?: React.ReactNode;
   variants?: "default" | "outline" | "ghost";
 }
 
+function getProgressMessage(process: CurrentProcess): string {
+  switch (process.status) {
+    case "creating-directory":
+      return `디렉토리 생성중 (${process.processedItems}/${process.totalItems})`;
+    case "hash-calculation":
+      return `해시 계산중 (${process.processedItems}/${process.totalItems})`;
+    case "uploading":
+      return `업로드중 (${process.processedItems}/${process.totalItems})`;
+    case "paused":
+      return "일시정지됨";
+    case "completed":
+      return "완료됨";
+    case "failed":
+      return `실패: ${process.error || "알 수 없는 오류"}`;
+    default:
+      return "대기중";
+  }
+}
+
+function PersistentUploadSessions() {
+  const uploads = useUploadSessionStore();
+  const { t } = useTranslation();
+
+  return Object.values(uploads.snapshots).map((snapshot) => {
+    const completed = snapshot.targets.filter((target) =>
+      ["created", "exists", "completed"].includes(target.status),
+    ).length;
+    const failed = snapshot.targets.length - completed;
+    const actions = getUploadSessionActionAvailability(snapshot);
+    const runAction = (action: () => Promise<void>) =>
+      action().catch((error) => {
+        toast.error(t("upload.transfer.action_error"), {
+          description: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return (
+      <section
+        key={snapshot.session.requestId}
+        className="flex flex-col gap-3 border-b pb-4 last:border-b-0"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <strong className="block truncate">{snapshot.session.name}</strong>
+            <small className="text-muted-foreground">
+              {t(`upload.transfer.status.${snapshot.session.status}`, {
+                defaultValue: snapshot.session.status,
+              })}
+              {` · ${completed}/${snapshot.targets.length}`}
+              {failed > 0 ? ` · ${t("upload.transfer.summary.failed", { count: failed })}` : ""}
+            </small>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {actions.canRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClickPromise={() => runAction(() => uploads.retry(snapshot.session.requestId))}
+              >
+                {t("upload.transfer.action.retry")}
+              </Button>
+            )}
+            {actions.canCancel && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClickPromise={() => runAction(() => uploads.dismiss(snapshot.session.requestId))}
+              >
+                {t("upload.transfer.action.cancel")}
+              </Button>
+            )}
+            {actions.canDismiss && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClickPromise={() => runAction(() => uploads.dismiss(snapshot.session.requestId))}
+              >
+                {t("upload.transfer.action.dismiss")}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="max-h-52 overflow-y-auto border">
+          {snapshot.targets.map((target) => (
+            <div
+              key={target.clientId}
+              className="flex items-start justify-between gap-3 border-b p-2 last:border-b-0"
+            >
+              <div className="min-w-0">
+                <span className="block truncate">{target.name}</span>
+                <small className="text-muted-foreground">{formatSize(target.size)}</small>
+              </div>
+              <div className="max-w-48 text-right">
+                <small>
+                  {t(`upload.transfer.status.${target.status}`, {
+                    defaultValue: target.status,
+                  })}
+                </small>
+                {target.reason && (
+                  <small className="block break-words text-destructive">
+                    {t(`upload.transfer.reason.${target.reason}`, {
+                      defaultValue: target.reason,
+                    })}
+                  </small>
+                )}
+                {target.status === "recovery_required" && (
+                  <Button asChild variant="outline" size="sm" className="mt-2">
+                    <label>
+                      {t("upload.transfer.action.select_file")}
+                      <input
+                        className="sr-only"
+                        type="file"
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) {
+                            void uploads
+                              .replaceSource(snapshot.session.requestId, target.clientId, file)
+                              .catch((error) =>
+                                toast.error(error instanceof Error ? error.message : String(error)),
+                              );
+                          }
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  });
+}
+
 export function ProcessSheet(props: ProcessSheetProps) {
   const { children, variants } = props;
 
   const { sheetOpen, setSheetOpen, upload, download } = useAkashaStore();
+  const persistentUploads = useUploadSessionStore();
   const { t } = useTranslation();
 
-  const uploads = useMemo(() => {
-    return upload.queue.length + (upload.current ? 1 : 0);
-  }, [upload]);
-
-  const downloads = useMemo(() => {
-    return download.queue.length + (download.current ? 1 : 0);
-  }, [download]);
-
-  const total = useMemo(() => {
-    return uploads + downloads;
-  }, [uploads, downloads]);
-
-  const getProgressMessage = (process: CurrentProcess): string => {
-    switch (process.status) {
-      case "creating-directory":
-        return `디렉토리 생성중 (${process.processedItems}/${process.totalItems})`;
-      case "hash-calculation":
-        return `해시 계산중 (${process.processedItems}/${process.totalItems})`;
-      case "uploading":
-        return `업로드중 (${process.processedItems}/${process.totalItems})`;
-      case "paused":
-        return "일시정지됨";
-      case "completed":
-        return "완료됨";
-      case "failed":
-        return `실패: ${process.error || "알 수 없는 오류"}`;
-      default:
-        return "대기중";
-    }
-  };
+  const uploads = upload.queue.length + (upload.current ? 1 : 0);
+  const downloads = download.queue.length + (download.current ? 1 : 0);
+  const total = uploads + downloads + Object.keys(persistentUploads.snapshots).length;
 
   return (
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -95,6 +201,8 @@ export function ProcessSheet(props: ProcessSheetProps) {
           </SheetTitle>
           <div className="flex grow">
             <div className="flex max-h-[70vh] w-full flex-col gap-4 overflow-y-auto">
+              <PersistentUploadSessions />
+
               {upload.current && (
                 <div className="flex w-full flex-col gap-2 border-b pb-4 last:border-b-0">
                   <div className="flex w-full flex-row items-center justify-between gap-4">
@@ -146,6 +254,8 @@ export function ProcessSheet(props: ProcessSheetProps) {
                     <div className="flex flex-row items-center gap-4">
                       <div className="flex aspect-square w-10 items-center justify-center rounded-md bg-secondary">
                         <button
+                          type="button"
+                          aria-label={t("upload.transfer.action.cancel")}
                           className="inline-flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
                           onClick={() => {
                             if (download.current) {
@@ -215,6 +325,8 @@ export function ProcessSheet(props: ProcessSheetProps) {
 
                     <div className="flex shrink-0 flex-row gap-1">
                       <button
+                        type="button"
+                        aria-label={t("upload.transfer.action.cancel")}
                         className="inline-flex h-10 w-10 items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
                         onClick={() => {
                           akasha.ULProcess.CancelUpload(queue.pid);

@@ -13,7 +13,8 @@
     "preprocess": "pnpm run build && pnpm run sw:minify",
     "serve": "vite preview --port 3000",
     "start": "vite --port 3000",
-    "sw:minify": "terser dist/sw.js -o dist/sw.js --mangle toplevel --module"
+    "sw:minify": "terser dist/sw.js -o dist/sw.js --mangle toplevel --module",
+    "test": "vitest run"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.6.24",
@@ -132,6 +133,7 @@
     "terser": "^5.49.0",
     "typescript": "^7.0.2",
     "vite-plugin-minify": "^3.0.0",
+    "vitest": "^4.1.10",
     "wrangler": "^4.113.0"
   }
 }

@@ -113,6 +113,53 @@
     "state": {
       "uploading": "上传中...",
       "waiting": "等待中..."
+    },
+    "transfer": {
+      "title": "文件传输",
+      "description": "查看每个文件的上传状态和错误。",
+      "action_error": "无法更新传输状态。",
+      "action": {
+        "retry": "重试",
+        "dismiss": "关闭",
+        "select_file": "重新选择原文件",
+        "cancel": "取消传输"
+      },
+      "summary": { "failed": "{{count}} 个失败" },
+      "status": {
+        "staging": "正在保存到本地",
+        "creating_directories": "正在创建目录",
+        "hashing": "正在计算哈希",
+        "planning": "正在规划上传",
+        "pending": "等待上传",
+        "uploading": "上传中",
+        "completing": "验证中",
+        "created": "已创建",
+        "exists": "已存在",
+        "completed": "已完成",
+        "partial": "部分失败",
+        "denied": "已拒绝",
+        "failed": "失败",
+        "paused": "等待重试",
+        "recovery_required": "需要原始文件"
+      },
+      "reason": {
+        "invalid_parent": "目标目录无效。",
+        "invalid_name": "文件名不被允许。",
+        "file_too_large": "文件超过大小限制。",
+        "unsupported_file_type": "不支持此文件类型。",
+        "name_conflict": "已存在同名的其他文件。",
+        "sha256_mismatch": "文件哈希不匹配。",
+        "size_mismatch": "文件大小不匹配。",
+        "invalid_token": "上传凭据已失效。",
+        "chunks_incomplete": "部分上传分片缺失。",
+        "chunk_manifest_not_found": "需要重新发送上传分片。",
+        "chunk_owner_mismatch": "上传服务器已更改，无法继续。",
+        "source_missing": "找不到已保存的原始文件。",
+        "source_size_mismatch": "重新选择的原文件大小不一致。",
+        "source_sha_mismatch": "重新选择的原文件内容不一致。",
+        "storage_unavailable": "浏览器文件存储不可用。",
+        "storage_quota_exceeded": "浏览器存储空间不足。"
+      }
     }
   },
   "u": {

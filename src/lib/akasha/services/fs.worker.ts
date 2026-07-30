@@ -1,8 +1,4 @@
-import { nanoid } from "nanoid";
-
 import type { FileInfoComponent } from "@/lib/workers/akasha.worker";
-
-import { validateExt } from "@/lib/utils";
 
 export interface DirectoryInfo {
     path: string;
@@ -18,10 +14,6 @@ self.onmessage = (event: MessageEvent<File[]>) => {
 
     for (const file of files) {
         const fullPath = file.webkitRelativePath;
-
-        if (!validateExt(file.name)) {
-            continue;
-        }
 
         const pathParts = fullPath.split("/");
         const fileName = pathParts.pop()!;
@@ -42,8 +34,10 @@ self.onmessage = (event: MessageEvent<File[]>) => {
             }
         }
 
+        const clientId = crypto.randomUUID();
         allFiles.push({
-            FID: nanoid(),
+            FID: clientId,
+            clientId,
             path: fullPath,
             name: fileName,
             size: file.size,

@@ -1,10 +1,12 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useRouteContext } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { akasha, dialogStore, type Content } from "@/lib/akasha";
 import { GetFSEntries } from "@/lib/akasha/services/drive-upload";
 import { startUpload } from "@/lib/akasha/services/mod-drive/upload";
+import { loadUploadSessionSnapshot } from "@/lib/akasha/upload-v2/repository";
 import { eden } from "@/lib/eden";
 import {
     contentDragStore,
@@ -157,6 +159,7 @@ export function useAkashaMutation() {
 
 export function useHandler() {
     const drag = useContentDrag();
+    const { t } = useTranslation();
     const { queryClient } = useRouteContext({ from: "__root__" });
 
     const onDragEnter = (e: React.DragEvent) => {
@@ -213,7 +216,7 @@ export function useHandler() {
             if (of === "drive") {
                 await akasha.uploadFromEntries(rawContents, entries, itemId);
             } else if (of === "mod" && collectionId) {
-                const promise = startUpload({
+                const requestId = await startUpload({
                     items: rawContents,
                     entries,
                     current: itemId,
@@ -221,12 +224,19 @@ export function useHandler() {
                     sig,
                 });
 
-                toast.promise(promise, {
-                    loading: "Uploading...",
-                    success: "Upload successful",
-                });
-
-                await promise;
+                const snapshot = await loadUploadSessionSnapshot(requestId);
+                const completed =
+                    snapshot?.targets.filter((target) =>
+                        ["created", "exists", "completed"].includes(target.status),
+                    ).length ?? 0;
+                const failed = (snapshot?.targets.length ?? 0) - completed;
+                if (failed > 0) {
+                    toast.warning(t("upload.transfer.status.partial"), {
+                        description: t("upload.transfer.summary.failed", { count: failed }),
+                    });
+                } else {
+                    toast.success(t("upload.transfer.status.completed"));
+                }
 
                 await queryClient.refetchQueries({
                     queryKey: ["akasha", "mod", "item", itemId],

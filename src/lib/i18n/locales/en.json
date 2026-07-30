@@ -114,6 +114,53 @@
     "state": {
       "uploading": "Uploading...",
       "waiting": "Waiting..."
+    },
+    "transfer": {
+      "title": "File transfers",
+      "description": "Review the upload status and error for every file.",
+      "action_error": "The transfer could not be updated.",
+      "action": {
+        "retry": "Retry",
+        "dismiss": "Dismiss",
+        "select_file": "Select source again",
+        "cancel": "Cancel transfer"
+      },
+      "summary": { "failed": "{{count}} failed" },
+      "status": {
+        "staging": "Saving locally",
+        "creating_directories": "Creating directories",
+        "hashing": "Calculating hashes",
+        "planning": "Planning upload",
+        "pending": "Pending",
+        "uploading": "Uploading",
+        "completing": "Verifying",
+        "created": "Created",
+        "exists": "Already exists",
+        "completed": "Completed",
+        "partial": "Partially completed",
+        "denied": "Denied",
+        "failed": "Failed",
+        "paused": "Waiting to retry",
+        "recovery_required": "Source file required"
+      },
+      "reason": {
+        "invalid_parent": "The destination directory is invalid.",
+        "invalid_name": "The file name is not allowed.",
+        "file_too_large": "The file exceeds the size limit.",
+        "unsupported_file_type": "This file type is not allowed.",
+        "name_conflict": "A different file with the same name already exists.",
+        "sha256_mismatch": "The file hash does not match.",
+        "size_mismatch": "The file size does not match.",
+        "invalid_token": "The upload credentials are no longer valid.",
+        "chunks_incomplete": "Some upload parts are missing.",
+        "chunk_manifest_not_found": "The upload parts must be sent again.",
+        "chunk_owner_mismatch": "The upload server changed and cannot resume this transfer.",
+        "source_missing": "The saved source file could not be found.",
+        "source_size_mismatch": "The selected source has a different size.",
+        "source_sha_mismatch": "The selected source has different contents.",
+        "storage_unavailable": "Browser file storage is unavailable.",
+        "storage_quota_exceeded": "There is not enough browser storage space."
+      }
     }
   },
   "u": {
