@@ -42,6 +42,21 @@ function RouteComponent() {
     initializeExplorer();
   }, []);
 
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.currentId) {
+        setCurrentId(event.state.currentId);
+        return;
+      }
+      if (linkParent) setCurrentId(linkParent.id);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [linkParent]);
+
   const query = useQuery({
     queryKey: ["akasha", "link", currentId],
     queryFn: async () => {
@@ -84,6 +99,17 @@ function RouteComponent() {
   //   });
   // }
 
+  function enterRoot(parentId: string) {
+    setCurrentId(parentId);
+    history.replaceState({ ...history.state, currentId: parentId }, "", window.location.href);
+  }
+
+  function handleNavi(newId: string) {
+    if (currentId === newId) return;
+    setCurrentId(newId);
+    history.pushState({ ...history.state, currentId: newId }, "", window.location.href);
+  }
+
   async function initializeExplorer() {
     const cachedData = sessionStorage.getItem(`linkData-${linkId}`);
     if (cachedData) {
@@ -93,7 +119,7 @@ function RouteComponent() {
       } else {
         setToken(cachedToken);
         setLinkParent(cachedParent);
-        setCurrentId(cachedParent.id);
+        enterRoot(cachedParent.id);
         setFirstLoading(false);
         return;
       }
@@ -146,7 +172,7 @@ function RouteComponent() {
 
       setToken(newToken);
       setLinkParent(newParent);
-      setCurrentId(newParent.id);
+      enterRoot(newParent.id);
 
       const expirationTime = Date.now() + 12 * 60 * 60 * 1000;
 
@@ -221,7 +247,7 @@ function RouteComponent() {
               ancestors={query.data.ancestors}
               isFetched={query.isFetched}
               isFetching={query.isFetching}
-              navi={setCurrentId}
+              navi={handleNavi}
               currentId={currentId}
             />
           )}
