@@ -141,7 +141,7 @@
         "denied": "Denied",
         "failed": "Failed",
         "paused": "Waiting to retry",
-        "recovery_required": "Source file required"
+        "cancelled": "Cancelled"
       },
       "reason": {
         "invalid_parent": "The destination directory is invalid.",
@@ -159,7 +159,8 @@
         "source_size_mismatch": "The selected source has a different size.",
         "source_sha_mismatch": "The selected source has different contents.",
         "storage_unavailable": "Browser file storage is unavailable.",
-        "storage_quota_exceeded": "There is not enough browser storage space."
+        "storage_quota_exceeded": "There is not enough browser storage space.",
+        "page_unloaded": "The page was closed before the upload finished."
       }
     }
   },

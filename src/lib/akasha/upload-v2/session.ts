@@ -5,6 +5,7 @@ import type { DirectoryInfo, FileInfoComponent } from "@/lib/workers/akasha.work
 
 import { queryClient } from "@/integrations/queryClient";
 import { eden } from "@/lib/eden";
+import { cleanupUploadOpfsArtifacts } from "@/lib/opfs";
 import { compressData } from "@/lib/utils";
 import { calculateHashesInParallel } from "@/lib/workers/upload/hash-pool";
 import {
@@ -22,20 +23,13 @@ import type {
 } from "./types";
 
 import { isPreviewFile } from "../services/drive-common";
-import {
-    deleteUploadSessionArtifacts,
-    deleteEncodedArtifact,
-    ensureUploadStorage,
-    readEncodedArtifact,
-    readSourceArtifact,
-    writeEncodedArtifact,
-    writeSourceArtifact,
-} from "./opfs";
 import { planUploadSession } from "./planner";
 import {
     applyUploadPlan,
     completeUploadIntentAttempt,
+    getIntentTargetUpdates,
     hasCompleteDirectoryMapping,
+    prepareUploadCancellation,
     prepareUploadRetry,
 } from "./policy";
 import {
@@ -55,21 +49,34 @@ import {
 import { uploadIntentBytes } from "./transport";
 
 const LEASE_MS = 60_000;
-const tabId = crypto.randomUUID();
+const TAB_ID_KEY = "akasha-upload-tab-id";
+const tabId = getUploadTabId();
+const sourceFiles = new Map<string, Map<string, File>>();
+const encodedFiles = new Map<string, File>();
+const activeUploadControllers = new Map<string, AbortController>();
 const updates =
     typeof BroadcastChannel === "undefined"
         ? undefined
         : new BroadcastChannel("akasha-upload-sessions");
 
 if (updates) updates.onmessage = () => void hydrateUploadSessions();
+if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", () => {
+        activeUploadControllers.forEach((controller) => controller.abort("page_unloaded"));
+        [...sourceFiles.keys()].forEach((requestId) => {
+            void loadUploadSessionSnapshot(requestId).then((snapshot) => {
+                if (snapshot) return cancelPersistedUploadSession(snapshot);
+            });
+        });
+    });
+}
 
 registerUploadSessionActions({
     retry: retryUploadSession,
     dismiss: dismissUploadSession,
-    replaceSource: replaceUploadSource,
 });
 
-export async function startPersistentUpload({
+export async function startUploadSession({
     kind,
     name,
     current,
@@ -88,7 +95,7 @@ export async function startPersistentUpload({
 }) {
     const requestId = crypto.randomUUID();
     const now = Date.now();
-    await ensureUploadStorage(files.reduce((total, file) => total + file.file.size, 0));
+    sourceFiles.set(requestId, new Map(files.map((file) => [file.clientId, file.file])));
 
     const session: PersistedUploadSession = {
         requestId,
@@ -111,28 +118,14 @@ export async function startPersistentUpload({
         parentPath: file.parentPath,
         size: file.file.size,
         status: "staging",
-        sourcePath: `akasha_uploads/${requestId}/source/${file.clientId}`,
         updatedAt: now,
     }));
 
-    await saveUploadSession(session);
-    await saveUploadTargets(targets);
-    await refreshSnapshot(requestId);
-
-    try {
-        for (const file of files) {
-            await writeSourceArtifact(requestId, file.clientId, file.file);
-        }
-    } catch (error) {
-        await saveUploadSession({
-            ...session,
-            status: "failed",
-            reason: error instanceof Error ? error.message : "storage_unavailable",
-            updatedAt: Date.now(),
-        });
-        await refreshSnapshot(requestId);
+    await Promise.all([saveUploadSession(session), saveUploadTargets(targets)]).catch((error) => {
+        clearUploadMemory(requestId);
         throw error;
-    }
+    });
+    await refreshSnapshot(requestId);
 
     await runUploadSession(requestId);
     return requestId;
@@ -145,23 +138,36 @@ export async function hydrateUploadSessions() {
     return snapshots;
 }
 
-export async function resumeIncompleteUploads() {
-    const snapshots = await hydrateUploadSessions();
+export async function initializeUploadSessions() {
+    await cleanupUploadOpfsArtifacts();
+    const snapshots = await listIncompleteUploadSessionSnapshots();
     for (const snapshot of orderBy(snapshots, [(item) => item.session.createdAt], ["asc"])) {
-        if (snapshot.session.status === "completed") continue;
-        void runUploadSession(snapshot.session.requestId);
+        if (snapshot.session.status === "cancelled") continue;
+        if (
+            snapshot.session.leaseOwner &&
+            snapshot.session.leaseOwner !== tabId &&
+            (snapshot.session.leaseUntil ?? 0) > Date.now()
+        ) {
+            continue;
+        }
+        await cancelPersistedUploadSession(snapshot);
     }
+    return hydrateUploadSessions();
 }
 
 export async function retryUploadSession(requestId: string) {
     const snapshot = await loadUploadSessionSnapshot(requestId);
     if (!snapshot) return;
+    if (!sourceFiles.has(requestId)) {
+        await cancelPersistedUploadSession(snapshot);
+        return;
+    }
     const retry = prepareUploadRetry(snapshot);
     await Promise.all(
-        retry.staleIntentIds.flatMap((intentId) => [
-            deleteUploadIntent(requestId, intentId),
-            deleteEncodedArtifact(requestId, intentId),
-        ]),
+        retry.staleIntentIds.map((intentId) => deleteUploadIntent(requestId, intentId)),
+    );
+    retry.staleIntentIds.forEach((intentId) =>
+        encodedFiles.delete(encodedFileKey(requestId, intentId)),
     );
     await saveUploadTargets(retry.targets);
     await saveUploadSession({
@@ -174,48 +180,11 @@ export async function retryUploadSession(requestId: string) {
 }
 
 export async function dismissUploadSession(requestId: string) {
-    await deleteUploadSessionArtifacts(requestId);
+    activeUploadControllers.get(requestId)?.abort("upload_cancelled");
+    clearUploadMemory(requestId);
     await deleteUploadSession(requestId);
     uploadSessionStore.getState().removeSnapshot(requestId);
     updates?.postMessage({ requestId, type: "deleted" });
-}
-
-export async function replaceUploadSource(requestId: string, clientId: string, file: File) {
-    const snapshot = await loadRequiredSnapshot(requestId);
-    const target = snapshot.targets.find((item) => item.clientId === clientId);
-    if (!target) throw new Error("upload_target_not_found");
-    if (file.size !== target.size) throw new Error("source_size_mismatch");
-
-    const hashes = await calculateHashesInParallel([{ FID: clientId, file }]);
-    const sha256 = hashes.get(clientId);
-    if (!sha256) throw new Error("source_hash_failed");
-    if (target.sha256 && target.sha256.toLowerCase() !== sha256.toLowerCase()) {
-        throw new Error("source_sha_mismatch");
-    }
-
-    await ensureUploadStorage(file.size);
-    await writeSourceArtifact(requestId, clientId, file);
-    await saveUploadTargets(
-        snapshot.targets.map((item) =>
-            item.clientId === clientId
-                ? {
-                      ...item,
-                      sha256,
-                      status: "paused" as const,
-                      reason: undefined,
-                      updatedAt: Date.now(),
-                  }
-                : item,
-        ),
-    );
-    await saveUploadSession({
-        ...snapshot.session,
-        status: "paused",
-        reason: undefined,
-        updatedAt: Date.now(),
-    });
-    await refreshSnapshot(requestId);
-    await runUploadSession(requestId);
 }
 
 async function runUploadSession(requestId: string) {
@@ -226,6 +195,8 @@ async function runUploadSession(requestId: string) {
             ttlMs: LEASE_MS,
         });
         if (!leased) return;
+        const controller = new AbortController();
+        activeUploadControllers.set(requestId, controller);
         const leaseTimer = window.setInterval(
             () =>
                 void renewUploadSessionLease({
@@ -238,16 +209,20 @@ async function runUploadSession(requestId: string) {
 
         try {
             let snapshot = await loadRequiredSnapshot(requestId);
-            snapshot = await ensureSources(snapshot);
-            if (snapshot.targets.some((target) => target.status === "recovery_required")) return;
             snapshot = await ensureDirectories(snapshot);
             snapshot = await ensureHashes(snapshot);
             snapshot = await ensurePlan(snapshot);
-            await uploadPlannedIntents(snapshot);
+            controller.signal.throwIfAborted();
+            await uploadPlannedIntents(snapshot, controller.signal);
+            controller.signal.throwIfAborted();
             await finalizeSession(await loadRequiredSnapshot(requestId));
         } catch (error) {
             const snapshot = await loadUploadSessionSnapshot(requestId);
             if (snapshot) {
+                if (controller.signal.aborted) {
+                    await cancelPersistedUploadSession(snapshot);
+                    return;
+                }
                 await saveUploadSession({
                     ...snapshot.session,
                     status: "failed",
@@ -258,54 +233,12 @@ async function runUploadSession(requestId: string) {
             }
         } finally {
             window.clearInterval(leaseTimer);
+            if (activeUploadControllers.get(requestId) === controller) {
+                activeUploadControllers.delete(requestId);
+            }
             await releaseUploadSessionLease(requestId, tabId).catch(() => false);
         }
     });
-}
-
-async function ensureSources(snapshot: UploadSessionSnapshot): Promise<UploadSessionSnapshot> {
-    const sources = await Promise.all(
-        snapshot.targets.map(async (target) => ({
-            target,
-            source: await readSourceArtifact(target.requestId, target.clientId),
-        })),
-    );
-    const verifiable = sources.filter(
-        (entry): entry is { target: PersistedUploadTarget; source: File } =>
-            Boolean(entry.source && entry.source.size === entry.target.size && entry.target.sha256),
-    );
-    const hashes = await calculateHashesInParallel(
-        verifiable.map((entry) => ({ FID: entry.target.clientId, file: entry.source })),
-    );
-    const targets = sources.map(({ target, source }) => {
-        const invalid =
-            !source ||
-            source.size !== target.size ||
-            (target.sha256 &&
-                hashes.get(target.clientId)?.toLowerCase() !== target.sha256.toLowerCase());
-        if (!invalid) return target;
-        return {
-            ...target,
-            status: "recovery_required" as const,
-            reason: !source
-                ? "source_missing"
-                : source.size !== target.size
-                  ? "source_size_mismatch"
-                  : "source_sha_mismatch",
-            updatedAt: Date.now(),
-        };
-    });
-    await saveUploadTargets(targets);
-    if (targets.some((target) => target.status === "recovery_required")) {
-        await saveUploadSession({
-            ...snapshot.session,
-            status: "paused",
-            reason: "source_missing",
-            updatedAt: Date.now(),
-        });
-    }
-    await refreshSnapshot(snapshot.session.requestId);
-    return { ...snapshot, targets };
 }
 
 async function ensureDirectories(snapshot: UploadSessionSnapshot): Promise<UploadSessionSnapshot> {
@@ -398,9 +331,9 @@ async function ensureHashes(snapshot: UploadSessionSnapshot) {
     });
     const files = await Promise.all(
         unhashed.map(async (target) => {
-            const source = await readSourceArtifact(target.requestId, target.clientId);
+            const source = sourceFiles.get(target.requestId)?.get(target.clientId);
             if (!source) throw new Error("source_missing");
-            return { FID: target.clientId, file: new File([source], target.name) };
+            return { FID: target.clientId, file: source };
         }),
     );
     const hashes = await calculateHashesInParallel(files);
@@ -440,7 +373,7 @@ async function ensurePlan(snapshot: UploadSessionSnapshot) {
     return { session, targets, intents };
 }
 
-async function uploadPlannedIntents(snapshot: UploadSessionSnapshot) {
+async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
     await saveUploadSession({
         ...snapshot.session,
         status: "uploading",
@@ -450,30 +383,38 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot) {
     await Promise.all(
         snapshot.intents
             .filter((intent) => intent.state !== "completed")
-            .map((intent) => limit(() => uploadOneIntent(snapshot, intent))),
+            .map((intent) =>
+                limit(() =>
+                    uploadOneIntent(snapshot, intent, signal).catch((error: unknown) =>
+                        failUploadIntent(snapshot, intent, error),
+                    ),
+                ),
+            ),
     );
 }
 
-async function uploadOneIntent(snapshot: UploadSessionSnapshot, original: PersistedUploadIntent) {
+async function uploadOneIntent(
+    snapshot: UploadSessionSnapshot,
+    original: PersistedUploadIntent,
+    signal: AbortSignal,
+) {
     const target = snapshot.targets.find((item) => item.intentId === original.intentId);
     if (!target) return;
-    const source = await readSourceArtifact(target.requestId, target.clientId);
+    const source = sourceFiles.get(target.requestId)?.get(target.clientId);
     if (!source) throw new Error("source_missing");
-    const intent = await prepareIntentArtifact(original, source);
-    await saveUploadIntent({ ...intent, state: "uploading", updatedAt: Date.now() });
-    await setIntentTargets(snapshot.session.requestId, intent.intentId, "uploading");
-
-    const uploadFile = new File(
-        [intent.compAlg ? (await readEncodedArtifact(intent.requestId, intent.intentId))! : source],
-        target.name,
-    );
+    const prepared = await prepareIntentFile(original, source);
+    await saveUploadIntent({ ...prepared.intent, state: "uploading", updatedAt: Date.now() });
+    await setIntentTargets(snapshot.session.requestId, prepared.intent.intentId, "uploading");
     const result = await uploadIntentBytes({
-        intent,
-        file: uploadFile,
+        intent: prepared.intent,
+        file: prepared.file,
+        signal,
         callbacks: {
             onPartAcknowledged: async (index, totalParts) => {
-                const current = await loadRequiredSnapshot(intent.requestId);
-                const stored = current.intents.find((item) => item.intentId === intent.intentId);
+                const current = await loadRequiredSnapshot(prepared.intent.requestId);
+                const stored = current.intents.find(
+                    (item) => item.intentId === prepared.intent.intentId,
+                );
                 if (!stored) return;
                 await saveUploadIntent({
                     ...stored,
@@ -483,7 +424,10 @@ async function uploadOneIntent(snapshot: UploadSessionSnapshot, original: Persis
                 });
             },
             onPartsReset: async () => {
-                const stored = await getUploadIntent(intent.requestId, intent.intentId);
+                const stored = await getUploadIntent(
+                    prepared.intent.requestId,
+                    prepared.intent.intentId,
+                );
                 if (!stored) return;
                 await saveUploadIntent({
                     ...stored,
@@ -493,31 +437,52 @@ async function uploadOneIntent(snapshot: UploadSessionSnapshot, original: Persis
             },
         },
     });
-    const stored = await getUploadIntent(intent.requestId, intent.intentId);
+    const stored = await getUploadIntent(prepared.intent.requestId, prepared.intent.intentId);
     if (!stored) throw new Error("upload_intent_not_found");
     await saveUploadIntent(completeUploadIntentAttempt(stored, result));
     await setIntentTargets(
         snapshot.session.requestId,
-        intent.intentId,
+        prepared.intent.intentId,
         result.status === "completed" ? "completed" : result.status,
         result.reason,
     );
+    if (result.status === "completed") {
+        releaseIntentFiles(snapshot, prepared.intent.intentId);
+    }
 }
 
-async function prepareIntentArtifact(intent: PersistedUploadIntent, source: File) {
-    if (intent.compAlg || source.size >= 80 * 1024 * 1024 || (await isPreviewFile(source))) {
-        return intent;
+async function prepareIntentFile(intent: PersistedUploadIntent, source: File) {
+    const cached = encodedFiles.get(encodedFileKey(intent.requestId, intent.intentId));
+    if (cached) return { intent, file: cached };
+    if (source.size >= 80 * 1024 * 1024 || (await isPreviewFile(source))) {
+        return { intent, file: source };
     }
     const compressed = await compressData(await source.arrayBuffer(), "zstd");
-    if (!compressed.isCompressed || !compressed.compressedData) return intent;
-    await writeEncodedArtifact(
-        intent.requestId,
-        intent.intentId,
-        new Blob([new Uint8Array(compressed.compressedData).slice().buffer]),
-    );
+    if (!compressed.isCompressed || !compressed.compressedData) {
+        return { intent, file: source };
+    }
+    const file = new File([new Uint8Array(compressed.compressedData).slice().buffer], source.name);
     const updated = { ...intent, compAlg: "zstd" as const, updatedAt: Date.now() };
+    encodedFiles.set(encodedFileKey(intent.requestId, intent.intentId), file);
     await saveUploadIntent(updated);
-    return updated;
+    return { intent: updated, file };
+}
+
+async function failUploadIntent(
+    snapshot: UploadSessionSnapshot,
+    intent: PersistedUploadIntent,
+    error: unknown,
+) {
+    const stored = await getUploadIntent(intent.requestId, intent.intentId);
+    if (stored) {
+        await saveUploadIntent(completeUploadIntentAttempt(stored, { status: "failed" }));
+    }
+    await setIntentTargets(
+        snapshot.session.requestId,
+        intent.intentId,
+        "failed",
+        error instanceof Error ? error.message : "upload_failed",
+    );
 }
 
 async function setIntentTargets(
@@ -527,13 +492,7 @@ async function setIntentTargets(
     reason?: string,
 ) {
     const snapshot = await loadRequiredSnapshot(requestId);
-    await saveUploadTargets(
-        snapshot.targets.map((target) =>
-            target.intentId === intentId
-                ? { ...target, status, reason, updatedAt: Date.now() }
-                : target,
-        ),
-    );
+    await saveUploadTargets(getIntentTargetUpdates(snapshot.targets, intentId, status, reason));
     await refreshSnapshot(requestId);
 }
 
@@ -541,10 +500,7 @@ async function finalizeSession(snapshot: UploadSessionSnapshot) {
     const succeeded = snapshot.targets.filter(isSuccessTarget).length;
     const failed = snapshot.targets.length - succeeded;
     const hasRetryable = snapshot.targets.some(
-        (target) =>
-            target.status === "pending" ||
-            target.status === "paused" ||
-            target.status === "recovery_required",
+        (target) => target.status === "pending" || target.status === "paused",
     );
     const status = hasRetryable
         ? ("paused" as const)
@@ -552,7 +508,7 @@ async function finalizeSession(snapshot: UploadSessionSnapshot) {
           ? ("partial" as const)
           : ("completed" as const);
     await saveUploadSession({ ...snapshot.session, status, updatedAt: Date.now() });
-    if (status === "completed") await deleteUploadSessionArtifacts(snapshot.session.requestId);
+    if (status === "completed") clearUploadMemory(snapshot.session.requestId);
     await refreshSnapshot(snapshot.session.requestId);
     await queryClient.invalidateQueries({
         queryKey:
@@ -560,6 +516,45 @@ async function finalizeSession(snapshot: UploadSessionSnapshot) {
                 ? ["akasha", "drive", "item", snapshot.session.current]
                 : ["akasha", "mod", "item", snapshot.session.current],
     });
+}
+
+async function cancelPersistedUploadSession(snapshot: UploadSessionSnapshot) {
+    const cancelled = prepareUploadCancellation(snapshot);
+    await Promise.all([
+        saveUploadSession(cancelled.session),
+        saveUploadTargets(cancelled.targets),
+        saveUploadIntents(cancelled.intents),
+    ]);
+    clearUploadMemory(snapshot.session.requestId);
+    await refreshSnapshot(snapshot.session.requestId);
+}
+
+function releaseIntentFiles(snapshot: UploadSessionSnapshot, intentId: string) {
+    const sources = sourceFiles.get(snapshot.session.requestId);
+    snapshot.targets
+        .filter((target) => target.intentId === intentId)
+        .forEach((target) => sources?.delete(target.clientId));
+    encodedFiles.delete(encodedFileKey(snapshot.session.requestId, intentId));
+}
+
+function clearUploadMemory(requestId: string) {
+    sourceFiles.delete(requestId);
+    [...encodedFiles.keys()]
+        .filter((key) => key.startsWith(`${requestId}:`))
+        .forEach((key) => encodedFiles.delete(key));
+}
+
+function encodedFileKey(requestId: string, intentId: string) {
+    return `${requestId}:${intentId}`;
+}
+
+function getUploadTabId() {
+    if (typeof sessionStorage === "undefined") return crypto.randomUUID();
+    const stored = sessionStorage.getItem(TAB_ID_KEY);
+    if (stored) return stored;
+    const created = crypto.randomUUID();
+    sessionStorage.setItem(TAB_ID_KEY, created);
+    return created;
 }
 
 function isSuccessTarget(target: PersistedUploadTarget) {

@@ -130,28 +130,6 @@ function PersistentUploadSessions() {
                     })}
                   </small>
                 )}
-                {target.status === "recovery_required" && (
-                  <Button asChild variant="outline" size="sm" className="mt-2">
-                    <label>
-                      {t("upload.transfer.action.select_file")}
-                      <input
-                        className="sr-only"
-                        type="file"
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0];
-                          if (file) {
-                            void uploads
-                              .replaceSource(snapshot.session.requestId, target.clientId, file)
-                              .catch((error) =>
-                                toast.error(error instanceof Error ? error.message : String(error)),
-                              );
-                          }
-                          event.currentTarget.value = "";
-                        }}
-                      />
-                    </label>
-                  </Button>
-                )}
               </div>
             </div>
           ))}

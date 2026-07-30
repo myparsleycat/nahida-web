@@ -15,10 +15,6 @@ export async function cleanupOldOpfsDirectories() {
                 continue;
             }
 
-            if (entry.name === "akasha_uploads") {
-                continue;
-            }
-
             const parts = entry.name.split("_");
             if (parts.length < 2) {
                 continue;
@@ -45,6 +41,18 @@ export async function cleanupOldOpfsDirectories() {
         }
     } catch (error) {
         console.error("Failed to run OPFS cleanup:", error);
+    }
+}
+
+export async function cleanupUploadOpfsArtifacts() {
+    if (!navigator.storage?.getDirectory) return;
+    try {
+        const opfsRoot = await navigator.storage.getDirectory();
+        await opfsRoot.removeEntry("akasha_uploads", { recursive: true });
+    } catch (error: unknown) {
+        if (!(error instanceof DOMException && error.name === "NotFoundError")) {
+            console.warn("Failed to remove legacy upload artifacts:", error);
+        }
     }
 }
 

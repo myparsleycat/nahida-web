@@ -5,7 +5,6 @@ import type { UploadSessionSnapshot } from "@/lib/akasha/upload-v2/types";
 type SessionActions = {
     retry: (requestId: string) => Promise<void>;
     dismiss: (requestId: string) => Promise<void>;
-    replaceSource: (requestId: string, clientId: string, file: File) => Promise<void>;
 };
 
 let sessionActions: SessionActions | null = null;
@@ -19,7 +18,6 @@ interface UploadSessionViewState {
     removeSnapshot: (requestId: string) => void;
     retry: (requestId: string) => Promise<void>;
     dismiss: (requestId: string) => Promise<void>;
-    replaceSource: (requestId: string, clientId: string, file: File) => Promise<void>;
 }
 
 export const uploadSessionStore = createStore<UploadSessionViewState>((set) => ({
@@ -47,10 +45,6 @@ export const uploadSessionStore = createStore<UploadSessionViewState>((set) => (
     dismiss: async (requestId) => {
         if (!sessionActions) throw new Error("upload_session_not_initialized");
         await sessionActions.dismiss(requestId);
-    },
-    replaceSource: async (requestId, clientId, file) => {
-        if (!sessionActions) throw new Error("upload_session_not_initialized");
-        await sessionActions.replaceSource(requestId, clientId, file);
     },
 }));
 

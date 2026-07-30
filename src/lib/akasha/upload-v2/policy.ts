@@ -23,11 +23,8 @@ export function getUploadSessionActionAvailability(snapshot: UploadSessionSnapsh
             snapshot.targets.some((target) =>
                 ["pending", "paused", "failed"].includes(target.status),
             ),
-        canCancel:
-            snapshot.session.status === "failed" ||
-            snapshot.session.status === "paused" ||
-            snapshot.targets.some((target) => target.status === "recovery_required"),
-        canDismiss: ["completed", "partial"].includes(snapshot.session.status),
+        canCancel: snapshot.session.status === "failed" || snapshot.session.status === "paused",
+        canDismiss: ["completed", "partial", "cancelled"].includes(snapshot.session.status),
     };
 }
 
@@ -59,6 +56,44 @@ export function prepareUploadRetry(snapshot: UploadSessionSnapshot, now = Date.n
     };
 }
 
+export function prepareUploadCancellation(snapshot: UploadSessionSnapshot, now = Date.now()) {
+    const preservedTargetStatuses: PersistedUploadTarget["status"][] = [
+        "created",
+        "exists",
+        "completed",
+        "denied",
+        "failed",
+    ];
+
+    return {
+        session: {
+            ...snapshot.session,
+            status: "cancelled" as const,
+            reason: "page_unloaded",
+            updatedAt: now,
+        },
+        targets: snapshot.targets.map((target) =>
+            preservedTargetStatuses.includes(target.status)
+                ? target
+                : {
+                      ...target,
+                      status: "cancelled" as const,
+                      reason: "page_unloaded",
+                      updatedAt: now,
+                  },
+        ),
+        intents: snapshot.intents.map((intent) =>
+            intent.state === "completed"
+                ? intent
+                : {
+                      ...intent,
+                      state: "cancelled" as const,
+                      updatedAt: now,
+                  },
+        ),
+    };
+}
+
 export function completeUploadIntentAttempt(
     intent: PersistedUploadIntent,
     result: { status: "completed" | "paused" | "failed" },
@@ -70,6 +105,18 @@ export function completeUploadIntentAttempt(
         attemptCount: intent.attemptCount + 1,
         updatedAt: now,
     };
+}
+
+export function getIntentTargetUpdates(
+    targets: PersistedUploadTarget[],
+    intentId: string,
+    status: PersistedUploadTarget["status"],
+    reason?: string,
+    now = Date.now(),
+) {
+    return targets
+        .filter((target) => target.intentId === intentId)
+        .map((target) => ({ ...target, status, reason, updatedAt: now }));
 }
 
 export function applyUploadPlan({

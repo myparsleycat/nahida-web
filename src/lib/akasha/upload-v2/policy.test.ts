@@ -14,7 +14,9 @@ import {
     createChunkIndexes,
     getUploadRetryDecision,
     getUploadSessionActionAvailability,
+    getIntentTargetUpdates,
     hasCompleteDirectoryMapping,
+    prepareUploadCancellation,
     prepareUploadRetry,
 } from "./policy";
 
@@ -32,7 +34,6 @@ function target(clientId: string): PersistedUploadTarget {
         size: 10,
         sha256: "a".repeat(64),
         status: "planning",
-        sourcePath: `akasha-uploads/${REQUEST_ID}/${clientId}`,
         updatedAt: 0,
     };
 }
@@ -255,15 +256,20 @@ describe("upload session recovery policy", () => {
         ).toEqual({ canRetry: true, canCancel: true, canDismiss: false });
         expect(
             getUploadSessionActionAvailability(
-                snapshot("paused", [{ ...target("recovery"), status: "recovery_required" }]),
+                snapshot("paused", [{ ...target("paused"), status: "paused" }]),
             ),
-        ).toEqual({ canRetry: false, canCancel: true, canDismiss: false });
+        ).toEqual({ canRetry: true, canCancel: true, canDismiss: false });
         expect(
             getUploadSessionActionAvailability(
                 snapshot("partial", [{ ...target("failed"), status: "failed" }]),
             ),
         ).toEqual({ canRetry: true, canCancel: false, canDismiss: true });
         expect(getUploadSessionActionAvailability(snapshot("completed", []))).toEqual({
+            canRetry: false,
+            canCancel: false,
+            canDismiss: true,
+        });
+        expect(getUploadSessionActionAvailability(snapshot("cancelled", []))).toEqual({
             canRetry: false,
             canCancel: false,
             canDismiss: true,
@@ -302,5 +308,60 @@ describe("upload session recovery policy", () => {
             attemptCount: 2,
             updatedAt: NOW,
         });
+    });
+
+    it("updates only targets owned by one intent", () => {
+        const first = { ...target("first"), intentId: "shared", status: "uploading" as const };
+        const second = { ...target("second"), intentId: "shared", status: "uploading" as const };
+        const unrelated = {
+            ...target("unrelated"),
+            intentId: "other",
+            status: "completed" as const,
+        };
+
+        expect(
+            getIntentTargetUpdates(
+                [first, second, unrelated],
+                "shared",
+                "failed",
+                "network_error",
+                NOW,
+            ),
+        ).toEqual([
+            { ...first, status: "failed", reason: "network_error", updatedAt: NOW },
+            { ...second, status: "failed", reason: "network_error", updatedAt: NOW },
+        ]);
+    });
+
+    it("cancels unfinished work while preserving completed and failed results", () => {
+        const pending = { ...target("pending"), status: "uploading" as const };
+        const completed = { ...target("completed"), status: "completed" as const };
+        const failed = { ...target("failed"), status: "failed" as const };
+        const result = prepareUploadCancellation(
+            snapshot(
+                "uploading",
+                [pending, completed, failed],
+                [
+                    { ...intent("pending-intent"), state: "uploading" },
+                    { ...intent("completed-intent"), state: "completed" },
+                ],
+            ),
+            NOW,
+        );
+
+        expect(result.session).toMatchObject({
+            status: "cancelled",
+            reason: "page_unloaded",
+            updatedAt: NOW,
+        });
+        expect(result.targets).toEqual([
+            { ...pending, status: "cancelled", reason: "page_unloaded", updatedAt: NOW },
+            completed,
+            failed,
+        ]);
+        expect(result.intents).toEqual([
+            expect.objectContaining({ state: "cancelled", updatedAt: NOW }),
+            expect.objectContaining({ state: "completed", updatedAt: 0 }),
+        ]);
     });
 });

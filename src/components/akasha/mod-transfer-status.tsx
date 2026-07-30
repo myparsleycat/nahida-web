@@ -222,30 +222,6 @@ export function TransferDialog() {
                             })}
                           </span>
                         )}
-                        {target.status === "recovery_required" && (
-                          <Button asChild variant="outline" size="sm" className="mt-2">
-                            <label>
-                              {t("upload.transfer.action.select_file")}
-                              <input
-                                className="sr-only"
-                                type="file"
-                                onChange={(event) => {
-                                  const file = event.currentTarget.files?.[0];
-                                  if (file) {
-                                    void runAction(() =>
-                                      uploadSessions.replaceSource(
-                                        snapshot.session.requestId,
-                                        target.clientId,
-                                        file,
-                                      ),
-                                    );
-                                  }
-                                  event.currentTarget.value = "";
-                                }}
-                              />
-                            </label>
-                          </Button>
-                        )}
                       </small>
                     </div>
                   ))}

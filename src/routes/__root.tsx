@@ -11,7 +11,7 @@ import { SidePanel } from "@/components/layout/SidePanel";
 import { buttonVariants } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
-import { resumeIncompleteUploads } from "@/lib/akasha/upload-v2/session";
+import { initializeUploadSessions } from "@/lib/akasha/upload-v2/session";
 import { eden } from "@/lib/eden";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,7 @@ function RootComponent() {
   const isMobile = useIsMobileWidth();
 
   useEffect(() => {
-    void resumeIncompleteUploads();
+    void initializeUploadSessions();
   }, []);
 
   if (query.isLoading) {

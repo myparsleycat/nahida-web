@@ -3,7 +3,7 @@ import { orderBy, sumBy } from "es-toolkit";
 import type { Content } from "@/lib/akasha/types";
 import type { FileInfoComponent } from "@/lib/workers/akasha.worker";
 
-import { startPersistentUpload } from "@/lib/akasha/upload-v2/session";
+import { startUploadSession } from "@/lib/akasha/upload-v2/session";
 import { modStore } from "@/stores/akasha-mod.store";
 
 import { collectDirectoryStructure, collectFiles, isNameConflict } from "../fs";
@@ -70,7 +70,7 @@ export async function startUpload({
     modStore.getState().setTotalBytes(upload.totalSize);
 
     try {
-        return await startPersistentUpload({
+        return await startUploadSession({
             kind: "mod",
             name: upload.processName,
             current,

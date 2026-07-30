@@ -13,7 +13,7 @@ export type UploadTargetStatus =
     | "denied"
     | "failed"
     | "paused"
-    | "recovery_required";
+    | "cancelled";
 
 export type UploadSessionStatus =
     | "staging"
@@ -24,7 +24,8 @@ export type UploadSessionStatus =
     | "completed"
     | "partial"
     | "failed"
-    | "paused";
+    | "paused"
+    | "cancelled";
 
 export interface PersistedUploadDirectory {
     path: string;
@@ -46,7 +47,6 @@ export interface PersistedUploadTarget {
     reason?: string;
     itemId?: string;
     intentId?: string;
-    sourcePath: string;
     updatedAt: number;
 }
 
@@ -56,7 +56,7 @@ export interface PersistedUploadIntent {
     url: string;
     token: string;
     sha256: string;
-    state: "pending" | "uploading" | "completing" | "completed" | "paused" | "failed";
+    state: "pending" | "uploading" | "completing" | "completed" | "paused" | "failed" | "cancelled";
     totalParts?: number;
     acknowledgedParts: number[];
     attemptCount: number;

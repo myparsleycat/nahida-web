@@ -26,7 +26,7 @@ import {
     setAkashaWorker,
     updateCurrentUploadStatus,
 } from "./services/upload";
-import { startPersistentUpload } from "./upload-v2/session";
+import { startUploadSession } from "./upload-v2/session";
 
 class AkashaClass {
     private _store?: ReturnType<typeof akashaStore.getState>;
@@ -335,7 +335,7 @@ class AkashaClass {
                 return { ...file, FID: clientId, clientId };
             });
             this.changeTransferSheetOpen(true);
-            void startPersistentUpload({
+            void startUploadSession({
                 kind: "drive",
                 name: upload.name,
                 current: upload.parentUUID!,

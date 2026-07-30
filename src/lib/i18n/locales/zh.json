@@ -140,7 +140,7 @@
         "denied": "已拒绝",
         "failed": "失败",
         "paused": "等待重试",
-        "recovery_required": "需要原始文件"
+        "cancelled": "已取消"
       },
       "reason": {
         "invalid_parent": "目标目录无效。",
@@ -158,7 +158,8 @@
         "source_size_mismatch": "重新选择的原文件大小不一致。",
         "source_sha_mismatch": "重新选择的原文件内容不一致。",
         "storage_unavailable": "浏览器文件存储不可用。",
-        "storage_quota_exceeded": "浏览器存储空间不足。"
+        "storage_quota_exceeded": "浏览器存储空间不足。",
+        "page_unloaded": "页面在上传完成前已关闭。"
       }
     }
   },

@@ -33,6 +33,7 @@ export async function uploadIntentBytes({
     callbacks?: IntentTransportCallbacks;
     signal?: AbortSignal;
 }): Promise<IntentTransportResult> {
+    if (signal?.aborted) return { status: "paused", reason: "aborted" };
     if (file.size < DIRECT_UPLOAD_THRESHOLD) {
         return uploadDirect(intent, file, callbacks, signal);
     }
@@ -169,6 +170,10 @@ function sendXhr(
     signal?: AbortSignal,
 ) {
     return new Promise<HttpResult>((resolve) => {
+        if (signal?.aborted) {
+            resolve({ status: 0, reason: "aborted" });
+            return;
+        }
         const xhr = new XMLHttpRequest();
         const abort = () => xhr.abort();
         signal?.addEventListener("abort", abort, { once: true });
@@ -234,6 +239,10 @@ function toTransportResult(result: HttpResult): IntentTransportResult {
 
 function retryDelay(attempt: number, signal?: AbortSignal, cap = 8_000) {
     return new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+        }
         const timer = setTimeout(resolve, Math.min(1000 * 2 ** attempt, cap));
         signal?.addEventListener(
             "abort",
