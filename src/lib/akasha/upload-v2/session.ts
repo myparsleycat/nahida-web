@@ -20,6 +20,7 @@ import type {
     PersistedUploadTarget,
     UploadKind,
     UploadSessionSnapshot,
+    UploadSessionStatus,
 } from "./types";
 
 import { isPreviewFile } from "../services/drive-common";
@@ -243,12 +244,7 @@ async function runUploadSession(requestId: string) {
 
 async function ensureDirectories(snapshot: UploadSessionSnapshot): Promise<UploadSessionSnapshot> {
     if (hasCompleteDirectoryMapping(snapshot)) return snapshot;
-    const session = {
-        ...snapshot.session,
-        status: "creating_directories" as const,
-        updatedAt: Date.now(),
-    };
-    await saveUploadSession(session);
+    const session = await setSessionStatus(snapshot.session, "creating_directories");
     const directories =
         session.kind === "drive"
             ? await createDriveDirectories(session.current, session.directories)
@@ -259,10 +255,11 @@ async function ensureDirectories(snapshot: UploadSessionSnapshot): Promise<Uploa
         if (!parentId) throw new Error("directory_mapping_missing");
         return { ...target, parentId, updatedAt: Date.now() };
     });
-    await saveUploadSession({ ...session, directories, updatedAt: Date.now() });
+    const nextSession = { ...session, directories, updatedAt: Date.now() };
+    await saveUploadSession(nextSession);
     await saveUploadTargets(targets);
     await refreshSnapshot(session.requestId);
-    return { ...snapshot, session, targets };
+    return { ...snapshot, session: nextSession, targets };
 }
 
 async function createDriveDirectories(current: string, directories: PersistedUploadDirectory[]) {
@@ -324,11 +321,7 @@ async function createModDirectories(
 async function ensureHashes(snapshot: UploadSessionSnapshot) {
     const unhashed = snapshot.targets.filter((target) => !target.sha256);
     if (unhashed.length === 0) return snapshot;
-    await saveUploadSession({
-        ...snapshot.session,
-        status: "hashing",
-        updatedAt: Date.now(),
-    });
+    const session = await setSessionStatus(snapshot.session, "hashing");
     const files = await Promise.all(
         unhashed.map(async (target) => {
             const source = sourceFiles.get(target.requestId)?.get(target.clientId);
@@ -344,8 +337,8 @@ async function ensureHashes(snapshot: UploadSessionSnapshot) {
         updatedAt: Date.now(),
     }));
     await saveUploadTargets(targets);
-    await refreshSnapshot(snapshot.session.requestId);
-    return { ...snapshot, targets };
+    await refreshSnapshot(session.requestId);
+    return { ...snapshot, session, targets };
 }
 
 async function ensurePlan(snapshot: UploadSessionSnapshot) {
@@ -353,8 +346,7 @@ async function ensurePlan(snapshot: UploadSessionSnapshot) {
         (target) => !isPlanTerminal(target) && !target.intentId,
     );
     if (targetsToPlan.length === 0) return snapshot;
-    const session = { ...snapshot.session, status: "planning" as const, updatedAt: Date.now() };
-    await saveUploadSession(session);
+    const session = await setSessionStatus(snapshot.session, "planning");
     const response = await planUploadSession(session, targetsToPlan);
     const applied = applyUploadPlan({
         response,
@@ -370,15 +362,12 @@ async function ensurePlan(snapshot: UploadSessionSnapshot) {
     await saveUploadTargets(targets);
     await saveUploadIntents(intents);
     await refreshSnapshot(session.requestId);
-    return { session, targets, intents };
+    return { ...snapshot, session, targets, intents };
 }
 
 async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
-    await saveUploadSession({
-        ...snapshot.session,
-        status: "uploading",
-        updatedAt: Date.now(),
-    });
+    const session = await setSessionStatus(snapshot.session, "uploading");
+    snapshot = { ...snapshot, session };
     const limit = pLimit(4);
     await Promise.all(
         snapshot.intents
@@ -563,6 +552,13 @@ function isSuccessTarget(target: PersistedUploadTarget) {
 
 function isPlanTerminal(target: PersistedUploadTarget) {
     return isSuccessTarget(target) || target.status === "denied" || target.status === "failed";
+}
+
+async function setSessionStatus(session: PersistedUploadSession, status: UploadSessionStatus) {
+    const next = { ...session, status, updatedAt: Date.now() };
+    await saveUploadSession(next);
+    await refreshSnapshot(next.requestId);
+    return next;
 }
 
 async function refreshSnapshot(requestId: string) {
