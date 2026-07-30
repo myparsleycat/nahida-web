@@ -128,7 +128,7 @@
       },
       "summary": { "failed": "실패 {{count}}개" },
       "status": {
-        "staging": "로컬 저장 중",
+        "staging": "업로드 준비 중",
         "creating_directories": "디렉토리 생성 중",
         "hashing": "해시 계산 중",
         "planning": "업로드 계획 생성 중",

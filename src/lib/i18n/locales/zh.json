@@ -126,7 +126,7 @@
       },
       "summary": { "failed": "{{count}} 个失败" },
       "status": {
-        "staging": "正在保存到本地",
+        "staging": "正在准备上传",
         "creating_directories": "正在创建目录",
         "hashing": "正在计算哈希",
         "planning": "正在规划上传",

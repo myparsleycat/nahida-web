@@ -127,7 +127,7 @@
       },
       "summary": { "failed": "{{count}} failed" },
       "status": {
-        "staging": "Saving locally",
+        "staging": "Preparing upload",
         "creating_directories": "Creating directories",
         "hashing": "Calculating hashes",
         "planning": "Planning upload",
