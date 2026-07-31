@@ -225,7 +225,10 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
         {of === "drive" && (
           <DropdownMenu>
             <DropdownMenuTrigger
-              className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:h-9 md:px-3")}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "md:h-9 md:w-auto md:px-3",
+              )}
             >
               <PlusIcon className="md:hidden" />
               <span className="hidden md:inline">{t("g.make_new")}</span>
