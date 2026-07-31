@@ -33,7 +33,7 @@ function RouteComponent() {
   };
 
   useEffect(() => {
-    fetchSize();
+    void fetchSize();
   }, []);
 
   const handleClearData = async () => {

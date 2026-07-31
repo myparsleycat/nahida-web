@@ -14,8 +14,28 @@ export const calculateFileSha256 = async (file: File): Promise<string | null> =>
         let nextChunkIndex = 0;
 
         return new Promise((resolve, reject) => {
+            let settled = false;
+
+            const terminateAllWorkers = () => {
+                workers.forEach((worker) => worker.terminate());
+            };
+
+            const fail = (error: unknown) => {
+                if (settled) return;
+                settled = true;
+                terminateAllWorkers();
+                reject(error);
+            };
+
+            const succeed = (hash: string) => {
+                if (settled) return;
+                settled = true;
+                terminateAllWorkers();
+                resolve(hash);
+            };
+
             const processNextChunk = async (worker: Worker) => {
-                if (nextChunkIndex >= totalChunks) {
+                if (settled || nextChunkIndex >= totalChunks) {
                     return;
                 }
 
@@ -23,6 +43,8 @@ export const calculateFileSha256 = async (file: File): Promise<string | null> =>
                 const end = Math.min(start + CHUNK_SIZE, file.size);
                 const chunk = file.slice(start, end);
                 const chunkBuffer = await chunk.arrayBuffer();
+
+                if (settled) return;
 
                 worker.postMessage(
                     {
@@ -39,19 +61,20 @@ export const calculateFileSha256 = async (file: File): Promise<string | null> =>
                 const worker = new SHA256Worker();
 
                 worker.onmessage = async (event) => {
-                    const { success, hash, chunkIndex, error } = event.data;
+                    if (settled) return;
 
-                    if (!success) {
-                        terminateAllWorkers();
-                        reject(new Error(error));
-                        return;
-                    }
+                    try {
+                        const { success, hash, chunkIndex, error } = event.data;
 
-                    chunkHashes[chunkIndex] = hash;
-                    completedChunks++;
+                        if (!success) {
+                            fail(new Error(error));
+                            return;
+                        }
 
-                    if (completedChunks === totalChunks) {
-                        try {
+                        chunkHashes[chunkIndex] = hash;
+                        completedChunks++;
+
+                        if (completedChunks === totalChunks) {
                             const finalHasher = await createSHA256();
                             finalHasher.init();
 
@@ -60,33 +83,32 @@ export const calculateFileSha256 = async (file: File): Promise<string | null> =>
                             }
 
                             const finalHash = finalHasher.digest("hex");
-                            terminateAllWorkers();
-                            resolve(finalHash);
-                        } catch (error) {
-                            terminateAllWorkers();
-                            reject(error);
+                            succeed(finalHash);
+                            return;
                         }
-                    } else {
-                        processNextChunk(worker);
+                    } catch (error) {
+                        fail(error);
                     }
+
+                    void processNextChunk(worker).catch(fail);
                 };
 
                 worker.onerror = (error) => {
-                    terminateAllWorkers();
-                    reject(new Error("Worker error: " + error.message));
+                    fail(new Error("Worker error: " + error.message));
                 };
 
                 return worker;
             };
 
-            const terminateAllWorkers = () => {
-                workers.forEach((worker) => worker.terminate());
-            };
-
             for (let i = 0; i < Math.min(WORKER_COUNT, totalChunks); i++) {
-                const worker = createWorker();
-                workers.push(worker);
-                processNextChunk(worker);
+                try {
+                    const worker = createWorker();
+                    workers.push(worker);
+                    void processNextChunk(worker).catch(fail);
+                } catch (error) {
+                    fail(error);
+                    return;
+                }
             }
         });
     } else return null;

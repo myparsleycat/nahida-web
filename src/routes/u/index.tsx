@@ -160,18 +160,23 @@ function RouteComponent() {
                       <AlertDialogAction
                         className={buttonVariants({ variant: "destructive" })}
                         disabled={delaccinput !== "삭제"}
-                        onClick={() => {
-                          authClient.deleteUser().then((res) => {
+                        onClick={async () => {
+                          try {
+                            const res = await authClient.deleteUser();
                             if (res.data?.success) {
-                              navi({ to: "/" });
-
-                              return toast.success("계정이 삭제되었습니다");
+                              toast.success("계정이 삭제되었습니다");
+                              await navi({ to: "/" }).catch((error: unknown) => {
+                                console.error("Failed to navigate after account deletion:", error);
+                              });
+                              return;
                             }
 
                             if (res.error?.message) {
                               toast.error(res.error.message);
                             }
-                          });
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : String(error));
+                          }
                         }}
                       >
                         {t("g.delete")}

@@ -366,7 +366,7 @@ export function ImportToMyDriveDialog({
     };
 
     if (currentFolder?.id && open && status === "idle") {
-      getFolderChildren(currentFolder.id);
+      void getFolderChildren(currentFolder.id);
     }
   }, [currentFolder, open, status]);
 

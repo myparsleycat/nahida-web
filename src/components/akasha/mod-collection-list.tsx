@@ -86,9 +86,6 @@ export function CollectionList(props: CollectionListProps) {
         throw new Error(error.value.toString());
       }
     },
-    onError: (err) => {
-      toast.error(err.message);
-    },
   });
 
   const privMut = useMutation({
@@ -109,13 +106,29 @@ export function CollectionList(props: CollectionListProps) {
         throw new Error(error.value.toString());
       }
     },
-    onSuccess: () => {
-      router.invalidate();
+    onSuccess: async () => {
+      await router.invalidate();
     },
     onError: (err) => {
       toast.error(err.message);
     },
   });
+
+  const createCollection = async () => {
+    try {
+      const resp = await creMut.mutateAsync();
+      try {
+        await router.invalidate();
+      } catch (error) {
+        console.error("Failed to refresh after collection creation:", error);
+      }
+      setOpen(false);
+      setNewCollectionName("");
+      setCollectionId(resp.collectionId);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   return (
     <ScrollArea className="relative h-full min-h-0 rounded-xl bg-black/40 p-3 inset-shadow-2xs">
@@ -141,9 +154,9 @@ export function CollectionList(props: CollectionListProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={async () => {
+                  onClick={() => {
                     if (collection.private) {
-                      privMut.mutateAsync({
+                      privMut.mutate({
                         id: collection.id,
                         value: false,
                       });
@@ -175,7 +188,7 @@ export function CollectionList(props: CollectionListProps) {
                       <AlertDialogCancel>취소</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => {
-                          privMut.mutateAsync({
+                          privMut.mutate({
                             id: collection.id,
                             value: true,
                           });
@@ -207,14 +220,21 @@ export function CollectionList(props: CollectionListProps) {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={async (e) => {
-                          delMut.mutateAsync({ id: collection.id }).then(async () => {
-                            router.invalidate();
+                        onClick={async () => {
+                          try {
+                            await delMut.mutateAsync({ id: collection.id });
+                            try {
+                              await router.invalidate();
+                            } catch (error) {
+                              console.error("Failed to refresh after collection deletion:", error);
+                            }
 
                             if (collectionId === collection.id) {
                               setCollectionId("");
                             }
-                          });
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : String(error));
+                          }
                         }}
                       >
                         Continue
@@ -243,27 +263,15 @@ export function CollectionList(props: CollectionListProps) {
                 <Input
                   value={newCollectionName}
                   onValueChange={setNewCollectionName}
-                  onKeyDown={async (e) => {
+                  onKeyDown={(e) => {
                     if (e.key === "Enter" && !creMut.isPending && !!newCollectionName) {
-                      creMut.mutateAsync().then(async (resp) => {
-                        setOpen(false);
-                        setNewCollectionName("");
-                        setCollectionId(resp.collectionId);
-                        router.invalidate();
-                      });
+                      void createCollection();
                     }
                   }}
                 />
                 <Button
                   disabled={creMut.isPending || !newCollectionName}
-                  onClick={async () => {
-                    creMut.mutateAsync().then(async (resp) => {
-                      setOpen(false);
-                      setNewCollectionName("");
-                      setCollectionId(resp.collectionId);
-                      router.invalidate();
-                    });
-                  }}
+                  onClick={() => void createCollection()}
                 >
                   Create
                 </Button>

@@ -75,7 +75,7 @@ export function useContentMenu(sortedContents?: Content[]) {
             if (navi2) {
                 navi2(item.id);
             } else {
-                navi({ to: "/akasha/drive/$itemId", params: { itemId: item.id } });
+                await navi({ to: "/akasha/drive/$itemId", params: { itemId: item.id } });
             }
         } else {
             if (item.mimeType?.startsWith("text")) {
@@ -88,7 +88,9 @@ export function useContentMenu(sortedContents?: Content[]) {
 
     const getDoubleClickHandler = (item: Content, navi?: (str: string) => void) => () => {
         if (!dialog.anyDialogOpen()) {
-            handleItemDoubleClick(item, navi);
+            void handleItemDoubleClick(item, navi).catch((error) => {
+                console.error("Failed to handle double click:", error);
+            });
         }
     };
 

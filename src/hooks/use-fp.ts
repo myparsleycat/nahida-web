@@ -11,7 +11,10 @@ export function useFpHash() {
             load()
                 .then((r) => r.get())
                 .then((r) => r.visitorId)
-                .then((r) => setFpHash(r));
+                .then((r) => setFpHash(r))
+                .catch((error) => {
+                    console.error("Failed to load fingerprint:", error);
+                });
         }
     }, [fpHash]);
 }

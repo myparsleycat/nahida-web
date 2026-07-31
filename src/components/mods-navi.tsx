@@ -26,12 +26,14 @@ export function ModsSearch({ s }: SearchProps) {
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const search = formData.get("s")?.toString();
 
-    navi({
+    void navi({
       to: "/admin/mods",
       search: {
         s: search,
         st: "title",
       },
+    }).catch((error) => {
+      console.error("Failed to navigate to mods:", error);
     });
   };
 

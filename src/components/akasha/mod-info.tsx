@@ -261,7 +261,7 @@ function EditDialog(props: EditDialogProps) {
   const router = useRouter();
 
   const refetch = async () => {
-    router.invalidate();
+    await router.invalidate();
   };
 
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -445,9 +445,8 @@ function EditDialog(props: EditDialogProps) {
                     return;
                   }
 
-                  eden.akasha.mod
-                    .edit({ modId })
-                    .post(
+                  try {
+                    const { error } = await eden.akasha.mod.edit({ modId }).post(
                       {
                         password: {
                           enabled: false,
@@ -456,20 +455,25 @@ function EditDialog(props: EditDialogProps) {
                       {
                         headers: { "x-sig": sig },
                       },
-                    )
-                    .then(async ({ error }) => {
-                      if (!error) {
-                        await refetch();
-                        if (passwordRef.current) {
-                          passwordRef.current.value = "";
-                        }
-                        toast.info("비밀번호가 해제되었습니다");
-                      } else {
-                        toast.error("서버 오류 발생", {
-                          description: error.value.toString(),
-                        });
-                      }
+                    );
+
+                    if (error) {
+                      toast.error("서버 오류 발생", {
+                        description: error.value.toString(),
+                      });
+                      return;
+                    }
+
+                    await refetch();
+                    if (passwordRef.current) {
+                      passwordRef.current.value = "";
+                    }
+                    toast.info("비밀번호가 해제되었습니다");
+                  } catch (error) {
+                    toast.error("서버 오류 발생", {
+                      description: error instanceof Error ? error.message : String(error),
                     });
+                  }
                 }}
               >
                 <DeleteIcon />
@@ -488,9 +492,8 @@ function EditDialog(props: EditDialogProps) {
                     return;
                   }
 
-                  eden.akasha.mod
-                    .edit({ modId })
-                    .post(
+                  try {
+                    const { error } = await eden.akasha.mod.edit({ modId }).post(
                       {
                         password: {
                           enabled: true,
@@ -500,20 +503,25 @@ function EditDialog(props: EditDialogProps) {
                       {
                         headers: { "x-sig": sig },
                       },
-                    )
-                    .then(async ({ error }) => {
-                      if (!error) {
-                        await refetch();
-                        if (passwordRef.current) {
-                          passwordRef.current.value = "********";
-                        }
-                        toast.info("비밀번호가 설정되었습니다");
-                      } else {
-                        toast.error("서버 오류 발생", {
-                          description: error.value.toString(),
-                        });
-                      }
+                    );
+
+                    if (error) {
+                      toast.error("서버 오류 발생", {
+                        description: error.value.toString(),
+                      });
+                      return;
+                    }
+
+                    await refetch();
+                    if (passwordRef.current) {
+                      passwordRef.current.value = "********";
+                    }
+                    toast.info("비밀번호가 설정되었습니다");
+                  } catch (error) {
+                    toast.error("서버 오류 발생", {
+                      description: error instanceof Error ? error.message : String(error),
                     });
+                  }
                 }}
               >
                 <SaveIcon />
@@ -780,9 +788,11 @@ function TopButtons() {
         throw error.value.toString();
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("모드가 삭제되었어요");
-      navi({ to: "/u/mods" });
+      await navi({ to: "/u/mods" }).catch((error: unknown) => {
+        console.error("Failed to navigate after mod deletion:", error);
+      });
     },
     onError: (error) => {
       toast.error("모드를 삭제하지 못했어요", {

@@ -5,8 +5,6 @@ export interface Ancestor {
     depth: number;
 }
 
-type ImportStatusType = "init" | "updating_metadata";
-
 interface ImportProgressData {
     depth: number;
     processedDirs: number;
@@ -25,7 +23,7 @@ interface ImportCompleteData {
 
 export interface ImportSSEMessage {
     event: "status" | "progress" | "complete" | "error";
-    data: ImportStatusType | ImportProgressData | ImportCompleteData | string;
+    data: ImportProgressData | ImportCompleteData | string;
 }
 
 export type ImportEvent =

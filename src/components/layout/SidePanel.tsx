@@ -28,7 +28,9 @@ import { cn } from "@/lib/utils";
 
 export function SidePanel() {
   useEffect(() => {
-    cleanupOldOpfsDirectories();
+    void cleanupOldOpfsDirectories().catch((error) => {
+      console.error("Failed to clean up old OPFS directories:", error);
+    });
   }, []);
 
   return (

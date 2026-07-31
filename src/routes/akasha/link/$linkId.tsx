@@ -39,7 +39,7 @@ function RouteComponent() {
   }, [linkId, token]);
 
   useEffect(() => {
-    initializeExplorer();
+    void initializeExplorer();
   }, []);
 
   useEffect(() => {
@@ -111,23 +111,23 @@ function RouteComponent() {
   }
 
   async function initializeExplorer() {
-    const cachedData = sessionStorage.getItem(`linkData-${linkId}`);
-    if (cachedData) {
-      const { cachedToken, cachedParent, expirationTime } = JSON.parse(cachedData);
-      if (Date.now() > expirationTime) {
-        sessionStorage.removeItem(`linkData-${linkId}`);
-      } else {
-        setToken(cachedToken);
-        setLinkParent(cachedParent);
-        enterRoot(cachedParent.id);
-        setFirstLoading(false);
-        return;
-      }
-    }
-
-    // const cftoken = await getTurnstileToken();
-
     try {
+      const cachedData = sessionStorage.getItem(`linkData-${linkId}`);
+      if (cachedData) {
+        const { cachedToken, cachedParent, expirationTime } = JSON.parse(cachedData);
+        if (Date.now() > expirationTime) {
+          sessionStorage.removeItem(`linkData-${linkId}`);
+        } else {
+          setToken(cachedToken);
+          setLinkParent(cachedParent);
+          enterRoot(cachedParent.id);
+          setFirstLoading(false);
+          return;
+        }
+      }
+
+      // const cftoken = await getTurnstileToken();
+
       const { data, error } = await eden.akasha.link({ linkId }).post({
         password: inPwd,
         cftoken: "", // cftoken,
@@ -184,6 +184,10 @@ function RouteComponent() {
           expirationTime,
         }),
       );
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      setErrMsg(text);
+      toast.error(text);
     } finally {
       // cfReset();
       setFirstLoading(false);
@@ -192,7 +196,8 @@ function RouteComponent() {
 
   async function handlePasswordSubmit() {
     if (!inPwd) {
-      return toast.warning(t("toast.warning.pw_is_required"));
+      toast.warning(t("toast.warning.pw_is_required"));
+      return;
     }
     await initializeExplorer();
   }
@@ -228,11 +233,11 @@ function RouteComponent() {
                   onChange={(e) => setInPwd(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handlePasswordSubmit();
+                      void handlePasswordSubmit();
                     }
                   }}
                 />
-                <Button onClick={handlePasswordSubmit}>{t("g.continue")}</Button>
+                <Button onClick={() => void handlePasswordSubmit()}>{t("g.continue")}</Button>
               </div>
             </div>
           </div>

@@ -20,7 +20,7 @@ function NotLogIn() {
   );
 }
 
-async function desktopSignInProcess({ session }: { session: Session | null }) {
+function desktopSignInProcess({ session }: { session: Session | null }) {
   if (!session) return;
 }
 

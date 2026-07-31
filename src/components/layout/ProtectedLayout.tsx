@@ -9,7 +9,9 @@ export function ProtectedLayout() {
 
   useEffect(() => {
     if (!session.isPending && !session.data) {
-      navi({ to: "/" });
+      void navi({ to: "/" }).catch((error) => {
+        console.error("Failed to redirect from protected layout:", error);
+      });
     }
   }, [session.data]);
 

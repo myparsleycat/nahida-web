@@ -72,169 +72,222 @@ class AkashaClass {
         }
 
         worker.onmessage = (e: MessageEvent) => {
-            const message = e.data as WorkerMessage;
-            const store = akashaStore.getState();
+            void (async () => {
+                const message = e.data as WorkerMessage;
+                const store = akashaStore.getState();
 
-            let workIsDone = false;
+                let workIsDone = false;
 
-            switch (message.type) {
-                case "progress":
-                    if (message.pid) {
+                switch (message.type) {
+                    case "progress":
+                        if (message.pid) {
+                            switch (message.action) {
+                                case "create_dir":
+                                    if (
+                                        store.upload.current &&
+                                        store.upload.current.pid === message.pid
+                                    ) {
+                                        store.setUploadCurrent({
+                                            ...store.upload.current,
+                                            status: "creating-directory",
+                                            processedItems: message.current,
+                                        });
+                                    }
+                                    break;
+
+                                case "upload_file":
+                                    if (
+                                        store.upload.current &&
+                                        store.upload.current.pid === message.pid
+                                    ) {
+                                        store.setUploadCurrent({
+                                            ...store.upload.current,
+                                            ...(message.status != null && {
+                                                status: message.status,
+                                            }),
+                                            ...(message.current != null && {
+                                                processedItems: message.current,
+                                            }),
+                                            ...(message.total != null && {
+                                                totalItems: message.total,
+                                            }),
+                                            ...(message.bytesUploaded != null && {
+                                                uploadedBytes: message.bytesUploaded,
+                                            }),
+                                            ...(message.totalBytes != null && {
+                                                totalBytes: message.totalBytes,
+                                            }),
+                                        });
+                                    }
+                                    break;
+
+                                case "upload_speed":
+                                    if (
+                                        store.upload.current &&
+                                        store.upload.current.pid === message.pid
+                                    ) {
+                                        store.setUploadCurrent({
+                                            ...store.upload.current,
+                                            ...(message.uploadBytesPerSec != null && {
+                                                uploadBytesPerSec: message.uploadBytesPerSec,
+                                            }),
+                                        });
+                                    }
+                                    break;
+                            }
+                        }
+                        break;
+
+                    case "complete":
                         switch (message.action) {
-                            case "create_dir":
+                            case "create_dir": {
                                 if (
                                     store.upload.current &&
                                     store.upload.current.pid === message.pid
                                 ) {
-                                    store.setUploadCurrent({
-                                        ...store.upload.current,
-                                        status: "creating-directory",
-                                        processedItems: message.current,
-                                    });
+                                    const currentUpload = store.upload.current;
+                                    if (!currentUpload) break;
+
+                                    const dirIdMap: Record<string, string> = {
+                                        "": currentUpload.parentUUID ?? "",
+                                    };
+                                    message.createdDirectories.forEach(
+                                        (uuid: string, index: number) => {
+                                            if (
+                                                currentUpload.rawDirectories &&
+                                                index < currentUpload.rawDirectories.length
+                                            ) {
+                                                const dir = currentUpload.rawDirectories[index];
+                                                const normalizedPath = normalizePath(dir.path);
+                                                dirIdMap[normalizedPath] = uuid;
+                                            }
+                                        },
+                                    );
+
+                                    assignTaskToWorker(
+                                        {
+                                            action: "upload_file",
+                                            files: currentUpload.rawFiles ?? [],
+                                            dirIdMap,
+                                            parentUUID: currentUpload.parentUUID,
+                                            name: currentUpload.name,
+                                            maxBytes: 50 * 1024 * 1024,
+                                            maxConnections: 50,
+                                            pid: currentUpload.pid,
+                                        },
+                                        [],
+                                    );
                                 }
                                 break;
+                            }
 
                             case "upload_file":
-                                if (
-                                    store.upload.current &&
-                                    store.upload.current.pid === message.pid
-                                ) {
-                                    store.setUploadCurrent({
-                                        ...store.upload.current,
-                                        ...(message.status != null && { status: message.status }),
-                                        ...(message.current != null && {
-                                            processedItems: message.current,
-                                        }),
-                                        ...(message.total != null && { totalItems: message.total }),
-                                        ...(message.bytesUploaded != null && {
-                                            uploadedBytes: message.bytesUploaded,
-                                        }),
-                                        ...(message.totalBytes != null && {
-                                            totalBytes: message.totalBytes,
-                                        }),
+                                updateCurrentUploadStatus(message.pid, "completed");
+                                toast.success(`업로드 완료: ${message.name}`);
+                                await queryClient
+                                    .refetchQueries({
+                                        queryKey: ["akasha", "drive", "item", message.parentId],
+                                    })
+                                    .catch((error: unknown) => {
+                                        console.error("Failed to refresh after upload:", error);
                                     });
-                                }
+                                await completeCurrentUpload().catch((error: unknown) => {
+                                    console.error("Failed to advance upload queue:", error);
+                                });
                                 break;
 
-                            case "upload_speed":
-                                if (
-                                    store.upload.current &&
-                                    store.upload.current.pid === message.pid
-                                ) {
-                                    store.setUploadCurrent({
-                                        ...store.upload.current,
-                                        ...(message.uploadBytesPerSec != null && {
-                                            uploadBytesPerSec: message.uploadBytesPerSec,
-                                        }),
+                            case "trash_many":
+                                const trashed = message.trashedUUIDs;
+                                toast.success(
+                                    `${trashed.length}개의 파일 및 디렉토리가 휴지통으로 이동되었습니다`,
+                                );
+                                await queryClient
+                                    .refetchQueries({
+                                        queryKey: ["akasha", "drive", "item"],
+                                    })
+                                    .catch((error: unknown) => {
+                                        console.error("Failed to refresh after trash:", error);
                                     });
-                                }
+                                break;
+
+                            case "restore_many":
+                                toast.success(
+                                    `${message.restoredUUIDs.length}개의 파일 및 디렉토리가 복원되었습니다`,
+                                );
+                                await queryClient
+                                    .refetchQueries({
+                                        queryKey: ["akasha", "drive", "item"],
+                                    })
+                                    .catch((error: unknown) => {
+                                        console.error("Failed to refresh after restore:", error);
+                                    });
+                                break;
+
+                            case "delete_many":
+                                const deleted = message.deletedUUIDs;
+                                toast.success(
+                                    `${deleted.length}개의 파일 및 디렉토리가 삭제되었습니다`,
+                                );
+                                await queryClient
+                                    .refetchQueries({
+                                        queryKey: ["akasha", "drive", "item"],
+                                    })
+                                    .catch((error: unknown) => {
+                                        console.error("Failed to refresh after delete:", error);
+                                    });
+
                                 break;
                         }
-                    }
-                    break;
+                        workIsDone = true;
+                        break;
 
-                case "complete":
-                    switch (message.action) {
-                        case "create_dir": {
+                    case "resolveWorker":
+                        workIsDone = true;
+                        break;
+
+                    case "error":
+                        if (message.pid) {
                             if (store.upload.current && store.upload.current.pid === message.pid) {
-                                const currentUpload = store.upload.current;
-                                if (!currentUpload) break;
-
-                                const dirIdMap: Record<string, string> = {
-                                    "": currentUpload.parentUUID ?? "",
-                                };
-                                message.createdDirectories.forEach(
-                                    (uuid: string, index: number) => {
-                                        if (
-                                            currentUpload.rawDirectories &&
-                                            index < currentUpload.rawDirectories.length
-                                        ) {
-                                            const dir = currentUpload.rawDirectories[index];
-                                            const normalizedPath = normalizePath(dir.path);
-                                            dirIdMap[normalizedPath] = uuid;
-                                        }
-                                    },
-                                );
-
-                                assignTaskToWorker(
-                                    {
-                                        action: "upload_file",
-                                        files: currentUpload.rawFiles ?? [],
-                                        dirIdMap,
-                                        parentUUID: currentUpload.parentUUID,
-                                        name: currentUpload.name,
-                                        maxBytes: 50 * 1024 * 1024,
-                                        maxConnections: 50,
-                                        pid: currentUpload.pid,
-                                    },
-                                    [],
-                                );
+                                updateCurrentUploadStatus(message.pid, "failed", message.error);
+                                await completeCurrentUpload().catch((error: unknown) => {
+                                    console.error("Failed to advance failed upload queue:", error);
+                                });
                             }
-                            break;
                         }
+                        console.error("Worker error:", message);
+                        workIsDone = true;
+                        break;
+                }
 
-                        case "upload_file":
-                            updateCurrentUploadStatus(message.pid, "completed");
-                            toast.success(`업로드 완료: ${message.name}`);
-                            queryClient.refetchQueries({
-                                queryKey: ["akasha", "drive", "item", message.parentId],
-                            });
-                            completeCurrentUpload();
-                            break;
+                if (workIsDone) {
+                    processUploadQueue();
+                    processNextTask();
+                }
+            })().catch((error: unknown) => {
+                const message = e.data as WorkerMessage;
+                const store = akashaStore.getState();
+                const pid = "pid" in message ? message.pid : undefined;
 
-                        case "trash_many":
-                            const trashed = message.trashedUUIDs;
-                            toast.success(
-                                `${trashed.length}개의 파일 및 디렉토리가 휴지통으로 이동되었습니다`,
-                            );
-                            queryClient.refetchQueries({
-                                queryKey: ["akasha", "drive", "item"],
-                            });
-                            break;
+                if (pid && store.upload.current?.pid === pid) {
+                    updateCurrentUploadStatus(
+                        pid,
+                        "failed",
+                        message.type === "error"
+                            ? message.error
+                            : error instanceof Error
+                              ? error.message
+                              : String(error),
+                    );
+                    void completeCurrentUpload().catch((queueError: unknown) => {
+                        console.error(
+                            "Failed to advance upload queue after worker failure:",
+                            queueError,
+                        );
+                    });
+                }
 
-                        case "restore_many":
-                            toast.success(
-                                `${message.restoredUUIDs.length}개의 파일 및 디렉토리가 복원되었습니다`,
-                            );
-                            queryClient.refetchQueries({
-                                queryKey: ["akasha", "drive", "item"],
-                            });
-                            break;
-
-                        case "delete_many":
-                            const deleted = message.deletedUUIDs;
-                            toast.success(
-                                `${deleted.length}개의 파일 및 디렉토리가 삭제되었습니다`,
-                            );
-                            queryClient.refetchQueries({
-                                queryKey: ["akasha", "drive", "item"],
-                            });
-
-                            break;
-                    }
-                    workIsDone = true;
-                    break;
-
-                case "resolveWorker":
-                    workIsDone = true;
-                    break;
-
-                case "error":
-                    if (message.pid) {
-                        if (store.upload.current && store.upload.current.pid === message.pid) {
-                            updateCurrentUploadStatus(message.pid, "failed", message.error);
-                            completeCurrentUpload();
-                        }
-                    }
-                    console.error("Worker error:", message);
-                    workIsDone = true;
-                    break;
-            }
-
-            if (workIsDone) {
-                processUploadQueue();
-                processNextTask();
-            }
+                console.error("Failed to handle worker message:", error);
+            });
         };
     }
 
@@ -253,9 +306,14 @@ class AkashaClass {
     }
 
     copyId(item: Content) {
-        navigator.clipboard.writeText(item.id).then(() => {
-            toast.success(t("drive.toast.copied_to_clipboard"));
-        });
+        void navigator.clipboard
+            .writeText(item.id)
+            .then(() => {
+                toast.success(t("drive.toast.copied_to_clipboard"));
+            })
+            .catch((error: unknown) => {
+                console.error("Failed to copy ID to clipboard:", error);
+            });
     }
 
     async clearPrefix(id: string, name: string) {
@@ -307,7 +365,9 @@ class AkashaClass {
             store.addToDownloadQueue(queuedDownload);
 
             if (!store.download.current) {
-                this.processNextDownloadInQueue();
+                void this.processNextDownloadInQueue().catch((error: unknown) => {
+                    console.error("Failed to advance download queue:", error);
+                });
             }
         },
 
@@ -320,7 +380,9 @@ class AkashaClass {
 
             if (download.current && download.current.pid === pid) {
                 download.current.abortController.abort();
-                completeCurrentDownload();
+                void completeCurrentDownload().catch((error: unknown) => {
+                    console.error("Failed to complete cancelled download:", error);
+                });
             } else {
                 removeFromDownloadQueue(pid);
             }

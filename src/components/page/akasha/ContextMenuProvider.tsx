@@ -113,12 +113,12 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
       const ids = items.map((item) => item.id);
       return akasha.trashMany(ids);
     },
-    onSuccess: (resp) => {
-      toast.success(`${resp.length}개의 파일 및 디렉토리가 휴지통으로 이동되었습니다`);
-      setSelectedItems([]);
-      queryClient.refetchQueries({
+    onSuccess: async (resp) => {
+      await queryClient.refetchQueries({
         queryKey: ["akasha", "drive", "item", itemId],
       });
+      toast.success(`${resp.length}개의 파일 및 디렉토리가 휴지통으로 이동되었습니다`);
+      setSelectedItems([]);
     },
     onError: (err) => {
       if (err.message.toLocaleLowerCase().includes("forbidden")) {
@@ -260,7 +260,7 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
       <ContextMenuItem
         className="gap-x-2"
         variant="destructive"
-        onClick={() => trashMutation.mutateAsync({ items: selectedItems })}
+        onClick={() => trashMutation.mutate({ items: selectedItems })}
       >
         <Trash2Icon width={18} height={18} />
         {t("drive.ui.trash")}
@@ -450,23 +450,21 @@ function ContextMenuModContentSnippet({
               <ContextMenuItem
                 className="gap-x-2"
                 onClick={async () => {
-                  DeleteItem(selectedItems, sig)
-                    .then(() => {
-                      queryClient.refetchQueries({
-                        queryKey: ["akasha", "mod", "item", itemId],
-                      });
-                    })
-                    .catch((err) => {
-                      if (err.message === "invalid sig") {
-                        toast.warning(err.message, {
-                          description: "삭제할 수 있는 권한이 없습니다",
-                        });
-                        return;
-                      }
-
-                      toast.error(err.message);
-                      return;
+                  try {
+                    await DeleteItem(selectedItems, sig);
+                    await queryClient.refetchQueries({
+                      queryKey: ["akasha", "mod", "item", itemId],
                     });
+                  } catch (err) {
+                    if (err instanceof Error && err.message === "invalid sig") {
+                      toast.warning(err.message, {
+                        description: "삭제할 수 있는 권한이 없습니다",
+                      });
+                      return;
+                    }
+
+                    toast.error(err instanceof Error ? err.message : String(err));
+                  }
                 }}
               >
                 <DeleteIcon width={18} height={18} />

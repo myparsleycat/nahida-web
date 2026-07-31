@@ -40,7 +40,7 @@ export type ModData = {
     imgs: ModImage[];
     dl_count: number;
     merged: boolean;
-    swapkey: unknown | null;
+    swapkey: unknown;
     preview_url: string;
     arca_url: string | null;
     virustotal_url: string | null;

@@ -29,14 +29,19 @@ self.onmessage = async (event) => {
 
     if (msgType === "abort") {
         if (activeReader) {
+            const reader = activeReader;
             try {
-                activeReader.cancel();
+                await reader.cancel();
             } catch {}
-            activeReader = null;
+            if (activeReader === reader) {
+                activeReader = null;
+            }
         }
         self.postMessage({ type: "error", payload: "Download aborted" });
         return;
     }
+
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     try {
         const resp = await ky.get(url, {
@@ -47,19 +52,20 @@ self.onmessage = async (event) => {
             credentials: "include",
         });
 
-        const reader = resp.body?.getReader();
-        if (!reader) {
+        const streamReader = resp.body?.getReader();
+        if (!streamReader) {
             throw new Error("Failed to get ReadableStream reader.");
         }
 
-        activeReader = reader;
+        reader = streamReader;
+        activeReader = streamReader;
 
         const decoder = new TextDecoder();
 
         let buffer = "";
 
         while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await streamReader.read();
             if (done) {
                 break;
             }
@@ -103,8 +109,9 @@ self.onmessage = async (event) => {
                             }
                             case "complete": {
                                 self.postMessage({ type: "complete" });
-                                reader.cancel();
-                                activeReader = null;
+                                try {
+                                    await streamReader.cancel();
+                                } catch {}
                                 return;
                             }
                             case "error": {
@@ -113,27 +120,32 @@ self.onmessage = async (event) => {
                                     type: "error",
                                     payload: data.message || "An unknown server error occurred",
                                 });
-                                reader.cancel();
-                                activeReader = null;
+                                try {
+                                    await streamReader.cancel();
+                                } catch {}
                                 return;
                             }
                         }
-                    } catch (err) {
+                    } catch {
                         self.postMessage({
                             type: "error",
                             payload: `Failed to process ${eventType} data`,
                         });
-                        reader.cancel();
-                        activeReader = null;
+                        try {
+                            await streamReader.cancel();
+                        } catch {}
                         return;
                     }
                 }
             }
         }
     } catch (err) {
-        activeReader = null;
         if (err instanceof Error && err.name !== "AbortError") {
             self.postMessage({ type: "error", payload: "SSE connection error: " + err.message });
+        }
+    } finally {
+        if (activeReader === reader) {
+            activeReader = null;
         }
     }
 };

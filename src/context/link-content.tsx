@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import { eden } from "@/lib/eden";
 
 const $linkQuery = eden.akasha.link({ linkId: "" }).post;
-const $linkContent = eden.akasha.link.content({ id: "" }).get;
+const $linkContent = eden.akasha.link({ linkId: "" }).content({ id: "" }).get;
 type LinkQuery = Treaty.Data<typeof $linkQuery>;
 type LinkContent = Treaty.Data<typeof $linkContent>;
 
@@ -16,7 +16,7 @@ interface LinkContext {
   linkCnt?: LinkContent | null;
 }
 
-const linkCtx = createContext<LinkContent | null>(null);
+const linkCtx = createContext<LinkContext | null>(null);
 
 function useLinkContext() {
   const ctx = useContext(linkCtx);

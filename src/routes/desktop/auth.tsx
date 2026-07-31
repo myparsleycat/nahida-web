@@ -25,24 +25,33 @@ function RouteComponent() {
 
   useEffect(() => {
     const f = async () => {
-      const url = `${BACKEND_ORIGIN}/api/auth/desktop/auth/im-loggedin`;
-      const data = await ky
-        .post(url, {
-          json: { state },
-          credentials: "include",
-        })
-        .json<{ success: boolean; message: string }>();
+      try {
+        const url = `${BACKEND_ORIGIN}/api/auth/desktop/auth/im-loggedin`;
+        const data = await ky
+          .post(url, {
+            json: { state },
+            credentials: "include",
+          })
+          .json<{ success: boolean; message: string }>();
 
-      if (data.success) {
-        navi({ to: "/desktop/logged-in" });
-      } else {
-        setError(data.message);
+        if (data.success) {
+          await navi({ to: "/desktop/logged-in" });
+        } else {
+          setError(data.message);
+        }
+      } catch (error) {
+        console.error("Desktop authentication failed:", error);
+        setError(error instanceof Error ? error.message : "Desktop authentication failed");
+      } finally {
+        setLoading(false);
       }
     };
 
-    f();
-    setLoading(false);
-  }, [state]);
+    void f().catch((error) => {
+      console.error("Unexpected desktop authentication failure:", error);
+      setError(error instanceof Error ? error.message : "Desktop authentication failed");
+    });
+  }, [navi, state]);
 
   return (
     <Center>

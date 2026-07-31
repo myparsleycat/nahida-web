@@ -850,24 +850,29 @@ class InfiniteGridMenu {
     Promise.all(
       this.items.map(
         (item) =>
-          new Promise<HTMLImageElement>((resolve) => {
+          new Promise<HTMLImageElement>((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error(`Failed to load image: ${item.image}`));
             img.src = item.image;
           }),
       ),
-    ).then((images) => {
-      images.forEach((img, i) => {
-        const x = (i % this.atlasSize) * cellSize;
-        const y = Math.floor(i / this.atlasSize) * cellSize;
-        ctx.drawImage(img, x, y, cellSize, cellSize);
-      });
+    )
+      .then((images) => {
+        images.forEach((img, i) => {
+          const x = (i % this.atlasSize) * cellSize;
+          const y = Math.floor(i / this.atlasSize) * cellSize;
+          ctx.drawImage(img, x, y, cellSize, cellSize);
+        });
 
-      gl.bindTexture(gl.TEXTURE_2D, this.tex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-      gl.generateMipmap(gl.TEXTURE_2D);
-    });
+        gl.bindTexture(gl.TEXTURE_2D, this.tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+        gl.generateMipmap(gl.TEXTURE_2D);
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load menu images:", error);
+      });
   }
 
   private initDiscInstances(count: number): void {

@@ -15,8 +15,18 @@ export const getRandFloat = (min: number, max: number): number => {
 };
 
 export function copyStr(str: string) {
-    copy(str);
-    toast.success(t("drive.toast.copied_to_clipboard"));
+    void copy(str)
+        .then((copied) => {
+            if (copied) {
+                toast.success(t("drive.toast.copied_to_clipboard"));
+                return;
+            }
+
+            toast.error("클립보드 복사에 실패했습니다");
+        })
+        .catch(() => {
+            toast.error("클립보드 복사에 실패했습니다");
+        });
 }
 
 export const getImageFromClipboard = async (): Promise<File | null> => {

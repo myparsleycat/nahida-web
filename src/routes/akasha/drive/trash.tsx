@@ -255,49 +255,47 @@ function RouteComponent() {
                     className="cursor-pointer gap-x-2"
                     onClick={async () => {
                       const ids = selectedItems.map((item) => item.id);
-                      akasha
-                        .restoreMany(ids)
-                        .then((res) => {
-                          refetcher();
+                      try {
+                        const res = await akasha.restoreMany(ids);
+                        await refetcher();
 
-                          if (res.length === 1) {
-                            const { name, status } = res[0];
-                            if (status === "restored") {
-                              toast.success(t("#.itemsRestore.0", { values: { name } }));
-                            } else if (status === "conflict") {
-                              toast.warning(t("#.itemsRestore.1", { values: { name } }));
-                            }
-                          } else {
-                            const successCount = res.filter(
-                              (item) => item.status === "restored",
-                            ).length;
-                            const conflictCount = res.filter(
-                              (item) => item.status === "conflict",
-                            ).length;
-
-                            const firstName = res[0].name;
-                            if (successCount > 0 && conflictCount === 0) {
-                              toast.success(
-                                t("#.itemsRestore.2", {
-                                  values: { p1: firstName, p2: res.length.toString() },
-                                }),
-                              );
-                            } else if (conflictCount > 0 && successCount === 0) {
-                              toast.warning(
-                                `${firstName}을 포함한 ${res.length}개가 동일한 이름을 가진 폴더 또는 디렉토리가 존재합니다`,
-                              );
-                            } else if (successCount > 0 && conflictCount > 0) {
-                              toast.warning(
-                                `${firstName} 외 ${conflictCount - 1}개가 동일한 이름을 가진 폴더 또는 디렉토리가 존재합니다`,
-                              );
-                            }
+                        if (res.length === 1) {
+                          const { name, status } = res[0];
+                          if (status === "restored") {
+                            toast.success(t("#.itemsRestore.0", { values: { name } }));
+                          } else if (status === "conflict") {
+                            toast.warning(t("#.itemsRestore.1", { values: { name } }));
                           }
-                        })
-                        .catch((err) => {
-                          toast.error("Error", {
-                            description: err.message,
-                          });
+                        } else {
+                          const successCount = res.filter(
+                            (item) => item.status === "restored",
+                          ).length;
+                          const conflictCount = res.filter(
+                            (item) => item.status === "conflict",
+                          ).length;
+
+                          const firstName = res[0].name;
+                          if (successCount > 0 && conflictCount === 0) {
+                            toast.success(
+                              t("#.itemsRestore.2", {
+                                values: { p1: firstName, p2: res.length.toString() },
+                              }),
+                            );
+                          } else if (conflictCount > 0 && successCount === 0) {
+                            toast.warning(
+                              `${firstName}을 포함한 ${res.length}개가 동일한 이름을 가진 폴더 또는 디렉토리가 존재합니다`,
+                            );
+                          } else if (successCount > 0 && conflictCount > 0) {
+                            toast.warning(
+                              `${firstName} 외 ${conflictCount - 1}개가 동일한 이름을 가진 폴더 또는 디렉토리가 존재합니다`,
+                            );
+                          }
+                        }
+                      } catch (err) {
+                        toast.error("Error", {
+                          description: err instanceof Error ? err.message : String(err),
                         });
+                      }
                     }}
                   >
                     <RotateCcwIcon width={18} height={18} />
@@ -307,19 +305,17 @@ function RouteComponent() {
                   <ContextMenuItem
                     className="cursor-pointer gap-x-2"
                     variant="destructive"
-                    onClick={() => {
+                    onClick={async () => {
                       const ids = selectedItems.map((i) => i.id);
-                      akasha
-                        .deleteMany(ids)
-                        .then((res) => {
-                          refetcher();
-                          toast.success("Success");
-                        })
-                        .catch((err) => {
-                          toast.error("Error", {
-                            description: err.message,
-                          });
+                      try {
+                        await akasha.deleteMany(ids);
+                        await refetcher();
+                        toast.success("Success");
+                      } catch (err) {
+                        toast.error("Error", {
+                          description: err instanceof Error ? err.message : String(err),
                         });
+                      }
                     }}
                   >
                     <DeleteIcon width={18} height={18} />

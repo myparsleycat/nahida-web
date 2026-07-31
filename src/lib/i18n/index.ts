@@ -18,7 +18,8 @@ const resources = {
     },
 };
 
-i18n.use(LanguageDetector)
+void i18n
+    .use(LanguageDetector)
     .use(initReactI18next)
     .init({
         resources,
@@ -30,6 +31,9 @@ i18n.use(LanguageDetector)
         interpolation: {
             escapeValue: false,
         },
+    })
+    .catch((error) => {
+        console.error("Failed to initialize i18n:", error);
     });
 
 export default i18n;

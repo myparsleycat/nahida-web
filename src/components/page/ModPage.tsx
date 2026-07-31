@@ -429,7 +429,7 @@ export const Buttons = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
       }
     };
 
-    initializeDownload();
+    void initializeDownload();
   }, []);
 
   useEffect(() => {
@@ -627,7 +627,9 @@ export const Buttons = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            handleDownload(dMode);
+                            void handleDownload(dMode).catch((error) => {
+                              console.error("Download failed:", error);
+                            });
                           }
                         }}
                       />
@@ -636,7 +638,9 @@ export const Buttons = ({ modData }: { modData: HelloClientResponse["mod"] }) =>
                         disabled={isExecuting || tryPass}
                         onClick={(e) => {
                           e.preventDefault();
-                          handleDownload(dMode);
+                          void handleDownload(dMode).catch((error) => {
+                            console.error("Download failed:", error);
+                          });
                           passwordRef.current?.focus();
                         }}
                       >

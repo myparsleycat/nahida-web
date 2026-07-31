@@ -260,7 +260,7 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
   const [isForceDeleteDialogOpen, setForceDeleteDialogOpen] = useState(false);
 
   const handleDownload = () => {
-    eden
+    void eden
       .gimme({ uuid: id })
       .post()
       .then(({ data, error }) => {
@@ -270,6 +270,9 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
         }
 
         saveAs(data.presigned_url, data.file_name);
+      })
+      .catch(() => {
+        toast.warning(t("toast.error.internal_server_error"));
       });
   };
 
@@ -407,20 +410,18 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
               className="gap-2"
               variant="destructive"
               disabled={delMut.isPending}
-              onClick={() => {
-                delMut
-                  .mutateAsync()
-                  .then(() => {
-                    queryClient.refetchQueries({
-                      queryKey: ["u", "mods"],
-                    });
-                    toast.success(t("toast.success.mod_deleted"));
-                  })
-                  .catch((err) => {
-                    toast.error("Delete Error", {
-                      description: err,
-                    });
+              onClick={async () => {
+                try {
+                  await delMut.mutateAsync();
+                  await queryClient.refetchQueries({
+                    queryKey: ["u", "mods"],
                   });
+                  toast.success(t("toast.success.mod_deleted"));
+                } catch (err) {
+                  toast.error("Delete Error", {
+                    description: err instanceof Error ? err.message : String(err),
+                  });
+                }
               }}
             >
               {delMut.isPending ? (
@@ -451,19 +452,17 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
               variant="destructive"
               disabled={forceDelMut.isPending}
               onClick={async () => {
-                forceDelMut
-                  .mutateAsync()
-                  .then(() => {
-                    queryClient.refetchQueries({
-                      queryKey: ["u", "mods"],
-                    });
-                    toast.success(t("toast.success.mod_deleted"));
-                  })
-                  .catch((err) => {
-                    toast.error("Delete Error", {
-                      description: err.message,
-                    });
+                try {
+                  await forceDelMut.mutateAsync();
+                  await queryClient.refetchQueries({
+                    queryKey: ["u", "mods"],
                   });
+                  toast.success(t("toast.success.mod_deleted"));
+                } catch (err) {
+                  toast.error("Delete Error", {
+                    description: err instanceof Error ? err.message : String(err),
+                  });
+                }
               }}
             >
               {forceDelMut.isPending ? (

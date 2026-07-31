@@ -9,11 +9,13 @@ export const useRequireSession = () => {
 
     useEffect(() => {
         if (!isPending && !data) {
-            navi({
+            void navi({
                 to: "/sign-in",
                 search: {
                     redirect: window.location.href,
                 },
+            }).catch((error) => {
+                console.error("Failed to redirect to sign-in:", error);
             });
         }
     }, [isPending, data]);
@@ -29,11 +31,13 @@ export const useOnlyAdmin = () => {
 
     useEffect(() => {
         if ((!isPending && !data) || (data && data.user.role !== "staff")) {
-            navi({
+            void navi({
                 to: "/",
                 search: {
                     redirect: window.location.href,
                 },
+            }).catch((error) => {
+                console.error("Failed to redirect from admin page:", error);
             });
         }
     }, [data, isPending]);

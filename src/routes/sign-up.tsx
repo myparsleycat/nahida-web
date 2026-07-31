@@ -20,7 +20,11 @@ function RouteComponent() {
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (session) navi({ to: "/u" });
+    if (session) {
+      void navi({ to: "/u" }).catch((error) => {
+        console.error("Failed to redirect after sign-up:", error);
+      });
+    }
   }, [session]);
 
   return (
