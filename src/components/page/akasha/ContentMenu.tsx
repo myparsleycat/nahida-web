@@ -184,11 +184,7 @@ export function ContentMenuList(props: ContentMenuProps) {
         </tbody>
       </table>
 
-      <div
-        className="min-h-full grow"
-        onClick={handleClickOutside}
-        onContextMenu={handleClickOutside}
-      ></div>
+      <div onClick={handleClickOutside} onContextMenu={handleClickOutside}></div>
     </>
   );
 }
