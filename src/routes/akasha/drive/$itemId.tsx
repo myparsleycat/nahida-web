@@ -141,33 +141,31 @@ function RouteComponent() {
             <ContextMenuProvider itemId={itemId} of="drive">
               <HandlerProvider sortedContents={sortedContents}>
                 {sortedContents.length > 0 ? (
-                  <ScrollArea className="flex h-full flex-1 flex-col">
-                    <>
-                      {view.layout === "list" ? (
-                        <ContentMenuList
-                          sortedContents={sortedContents}
-                          isFetching={query.isFetching}
-                          itemId={itemId}
-                        />
-                      ) : view.layout === "grid" ? (
-                        <ContentMenuGrid
-                          sortedContents={sortedContents}
-                          isFetching={query.isFetching}
-                          itemId={itemId}
-                        />
-                      ) : null}
+                  <div>
+                    {view.layout === "list" ? (
+                      <ContentMenuList
+                        sortedContents={sortedContents}
+                        isFetching={query.isFetching}
+                        itemId={itemId}
+                      />
+                    ) : view.layout === "grid" ? (
+                      <ContentMenuGrid
+                        sortedContents={sortedContents}
+                        isFetching={query.isFetching}
+                        itemId={itemId}
+                      />
+                    ) : null}
 
-                      {drag.uploadDragging && (
-                        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/10">
-                          <div className="rounded-lg bg-background/90 p-4 shadow-lg">
-                            <p className="text-lg font-medium">
-                              {t("drive.ui.dir_drop_here_section_message.0")}
-                            </p>
-                          </div>
+                    {drag.uploadDragging && (
+                      <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/10">
+                        <div className="rounded-lg bg-background/90 p-4 shadow-lg">
+                          <p className="text-lg font-medium">
+                            {t("drive.ui.dir_drop_here_section_message.0")}
+                          </p>
                         </div>
-                      )}
-                    </>
-                  </ScrollArea>
+                      </div>
+                    )}
+                  </div>
                 ) : query.isFetched && sortedContents.length < 1 ? (
                   <Center className="flex-col">
                     <div>
