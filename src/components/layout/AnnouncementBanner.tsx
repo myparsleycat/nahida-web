@@ -38,15 +38,15 @@ const announcements: AnnouncementDefinition[] = [
       </>
     ),
   },
-  {
-    id: "firefox-support",
-    dismissPolicy: "weekly",
-    render: () => (
-      <div className="flex items-center gap-x-2">
-        Nahida Drive now supports <img src="/icon/firefox.svg" className="size-4.5"></img> Firefox.
-      </div>
-    ),
-  },
+  // {
+  //   id: "firefox-support",
+  //   dismissPolicy: "weekly",
+  //   render: () => (
+  //     <div className="flex items-center gap-x-2">
+  //       Nahida Drive now supports <img src="/icon/firefox.svg" className="size-4.5"></img> Firefox.
+  //     </div>
+  //   ),
+  // },
 ];
 
 const getPermanentDismissKey = (id: string) => `nhd-announcement:${id}:dismissed`;
