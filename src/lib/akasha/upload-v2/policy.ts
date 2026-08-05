@@ -16,15 +16,27 @@ export function hasCompleteDirectoryMapping(snapshot: UploadSessionSnapshot) {
     );
 }
 
+const ACTIVE_UPLOAD_SESSION_STATUSES = [
+    "staging",
+    "creating_directories",
+    "hashing",
+    "planning",
+    "uploading",
+] as const;
+
 export function getUploadSessionActionAvailability(snapshot: UploadSessionSnapshot) {
+    const status = snapshot.session.status;
+    const isActive = (ACTIVE_UPLOAD_SESSION_STATUSES as readonly string[]).includes(status);
+    const hasRetryableTargets = snapshot.targets.some((target) =>
+        ["pending", "paused", "failed"].includes(target.status),
+    );
+
     return {
-        canRetry:
-            snapshot.session.status === "failed" ||
-            snapshot.targets.some((target) =>
-                ["pending", "paused", "failed"].includes(target.status),
-            ),
-        canCancel: snapshot.session.status === "failed" || snapshot.session.status === "paused",
-        canDismiss: ["completed", "partial", "cancelled"].includes(snapshot.session.status),
+        // pending targets are normal during an active upload — only offer retry once the
+        // session has stopped in a recovery state (failed / paused / partial).
+        canRetry: !isActive && (status === "failed" || hasRetryableTargets),
+        canCancel: isActive || status === "failed" || status === "paused",
+        canDismiss: ["completed", "partial", "cancelled"].includes(status),
     };
 }
 

@@ -251,6 +251,16 @@ describe("upload session recovery policy", () => {
     it("exposes retry, cancel, and dismiss actions for each recovery state", () => {
         expect(
             getUploadSessionActionAvailability(
+                snapshot("uploading", [{ ...target("pending"), status: "pending" }]),
+            ),
+        ).toEqual({ canRetry: false, canCancel: true, canDismiss: false });
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("planning", [{ ...target("planning"), status: "planning" }]),
+            ),
+        ).toEqual({ canRetry: false, canCancel: true, canDismiss: false });
+        expect(
+            getUploadSessionActionAvailability(
                 snapshot("failed", [{ ...target("staging"), status: "staging" }]),
             ),
         ).toEqual({ canRetry: true, canCancel: true, canDismiss: false });

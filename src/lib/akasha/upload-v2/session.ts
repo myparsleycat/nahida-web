@@ -218,6 +218,10 @@ async function runUploadSession(requestId: string) {
             controller.signal.throwIfAborted();
             await finalizeSession(await loadRequiredSnapshot(requestId));
         } catch (error) {
+            // dismiss already deletes the session after aborting; do not re-persist a cancelled row.
+            if (controller.signal.aborted && controller.signal.reason === "upload_cancelled") {
+                return;
+            }
             const snapshot = await loadUploadSessionSnapshot(requestId);
             if (snapshot) {
                 if (controller.signal.aborted) {
