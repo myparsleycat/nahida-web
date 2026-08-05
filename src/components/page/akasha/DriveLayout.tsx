@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 
 import { ProcessSheet } from "./ProcessSheet";
 
+export const sheetTriggerClass =
+  "active flex w-full flex-row items-center gap-2.5 rounded-md p-2 text-primary transition-all hover:bg-secondary";
+
 export function SidePanel() {
   const { t } = useTranslation();
   const dialog = useDialogStore();
@@ -49,15 +52,11 @@ export function SidePanel() {
                   to="/akasha/drive/$itemId"
                   params={{ itemId: driveRootId }}
                   className={cn(
-                    "active flex w-full cursor-pointer flex-row items-center gap-2.5 rounded-md p-2 text-primary transition-all hover:bg-secondary",
+                    sheetTriggerClass,
                     location.pathname.endsWith("/root") && "bg-secondary",
                   )}
                 >
-                  <div className="flex flex-row items-center gap-2">
-                    <div>
-                      <HardDriveIcon />
-                    </div>
-                  </div>
+                  <HardDriveIcon />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -72,15 +71,11 @@ export function SidePanel() {
                 to="/akasha/drive/$itemId"
                 params={{ itemId: "share" }}
                 className={cn(
-                  "active flex w-full flex-row items-center gap-2.5 rounded-md p-2 text-primary transition-all hover:bg-secondary",
+                  sheetTriggerClass,
                   location.pathname.endsWith("/share") && "bg-secondary",
                 )}
               >
-                <div className="flex flex-row items-center gap-2">
-                  <div>
-                    <Share2Icon />
-                  </div>
-                </div>
+                <Share2Icon />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right">
@@ -102,7 +97,7 @@ export function SidePanel() {
                   <Link
                     to="/akasha/drive/trash"
                     className={cn(
-                      "flex w-full flex-row items-center gap-2.5 rounded-md bg-transparent p-2 text-primary transition-all hover:bg-secondary",
+                      sheetTriggerClass,
                       location.pathname.endsWith("trash") && "bg-secondary",
                     )}
                   >
@@ -132,7 +127,7 @@ export function SidePanel() {
               <Link
                 to="/akasha/drive/settings"
                 className={cn(
-                  "flex w-full flex-row items-center gap-2.5 rounded-md bg-transparent p-2 text-primary transition-all hover:bg-secondary",
+                  sheetTriggerClass,
                   location.pathname.endsWith("settings") && "bg-secondary",
                 )}
               >

@@ -19,6 +19,8 @@ import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/polic
 import { cn, formatSize } from "@/lib/utils";
 import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
+import { sheetTriggerClass } from "./DriveLayout";
+
 interface ProcessSheetProps {
   children?: React.ReactNode;
   variants?: "default" | "outline" | "ghost";
@@ -153,7 +155,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
       {children ? (
         <SheetTrigger asChild>{children}</SheetTrigger>
       ) : variants ? (
-        <SheetTrigger className={cn(buttonVariants({ variant: variants, size: "icon" }))}>
+        <SheetTrigger className={sheetTriggerClass}>
           {active ? (
             <Loader2Icon className="h-full w-full animate-spin" />
           ) : (
@@ -161,7 +163,7 @@ export function ProcessSheet(props: ProcessSheetProps) {
           )}
         </SheetTrigger>
       ) : (
-        <SheetTrigger className="flex flex-row items-center justify-center rounded-lg p-2 font-semibold text-muted-foreground transition-colors hover:text-primary">
+        <SheetTrigger className={sheetTriggerClass}>
           {active ? (
             <Loader2Icon className="h-full w-full animate-spin" />
           ) : (
