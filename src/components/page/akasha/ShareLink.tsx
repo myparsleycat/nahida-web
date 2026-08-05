@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 
 import type { Content } from "@/lib/akasha";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useContentView } from "@/hooks/akasha";
 import { useSession } from "@/lib/auth-client";
 import { getChosung, getSearchScore } from "@/lib/sejong";
@@ -18,6 +17,7 @@ import {
   ContentMenuGrid,
   ContentMenuList,
   ContextMenuProvider,
+  ListHead,
   type Ancestor,
 } from "./index";
 
@@ -77,41 +77,40 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
         <AkashaHeadButtons of="link" content={content} link={link} />
       </div>
 
-      <div className="flex flex-1 flex-col overflow-auto">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {sortedContents.length > 0 && view.layout === "list" && <ListHead />}
         <ContextMenuProvider itemId={currentId} of="link" link={link} navi={navi}>
-          <ScrollArea className="flex h-full flex-1 flex-col">
-            {sortedContents.length > 0 ? (
-              view.layout === "list" ? (
-                <ContentMenuList
-                  itemId={currentId}
-                  sortedContents={sortedContents}
-                  isFetching={isFetching}
-                />
-              ) : view.layout === "grid" ? (
-                <ContentMenuGrid
-                  itemId={currentId}
-                  sortedContents={sortedContents}
-                  isFetching={isFetching}
-                />
-              ) : null
-            ) : isFetched && sortedContents.length < 1 ? (
-              <div className="flex h-full w-full flex-row items-center justify-center select-none">
-                <div className="flex flex-col items-center justify-center p-4">
-                  <div>
-                    <FolderIcon width={100} height={100} />
-                  </div>
-                  <p className="mt-4 text-center text-xl">
-                    {t("drive.ui.no_contents_section_message.0")}
-                  </p>
-                  <p className="text-center text-muted-foreground">
-                    {t("drive.ui.no_contents_section_message.1")}
-                  </p>
+          {sortedContents.length > 0 ? (
+            view.layout === "list" ? (
+              <ContentMenuList
+                itemId={currentId}
+                sortedContents={sortedContents}
+                isFetching={isFetching}
+              />
+            ) : view.layout === "grid" ? (
+              <ContentMenuGrid
+                itemId={currentId}
+                sortedContents={sortedContents}
+                isFetching={isFetching}
+              />
+            ) : null
+          ) : isFetched && sortedContents.length < 1 ? (
+            <div className="flex h-full w-full flex-row items-center justify-center select-none">
+              <div className="flex flex-col items-center justify-center p-4">
+                <div>
+                  <FolderIcon width={100} height={100} />
                 </div>
+                <p className="mt-4 text-center text-xl">
+                  {t("drive.ui.no_contents_section_message.0")}
+                </p>
+                <p className="text-center text-muted-foreground">
+                  {t("drive.ui.no_contents_section_message.1")}
+                </p>
               </div>
-            ) : isFetching && sortedContents.length === 0 ? (
-              <AkashaSkeleton />
-            ) : null}
-          </ScrollArea>
+            </div>
+          ) : isFetching && sortedContents.length === 0 ? (
+            <AkashaSkeleton />
+          ) : null}
         </ContextMenuProvider>
       </div>
     </div>

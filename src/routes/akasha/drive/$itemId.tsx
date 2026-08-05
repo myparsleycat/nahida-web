@@ -14,9 +14,9 @@ import {
   ContentMenuList,
   ContextMenuProvider,
   HandlerProvider,
+  ListHead,
 } from "@/components/page/akasha";
 import { NewDirectoryDialog, PubLinkDialog, RenameDialog } from "@/components/page/akasha/dialogs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useContentDrag, useContentView, useHandler, useQueryData } from "@/hooks/akasha";
 import { eden } from "@/lib/eden";
 import { getChosung, getSearchScore } from "@/lib/sejong";
@@ -132,12 +132,13 @@ function RouteComponent() {
           </div>
 
           <div
-            className="flex flex-1 flex-col overflow-auto"
+            className="flex flex-1 flex-col overflow-hidden"
             onDragEnter={onDragEnter}
             onDragLeave={onDragLeave}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop({ e, rawContents, itemId, of: "drive" })}
           >
+            {sortedContents.length > 0 && view.layout === "list" && <ListHead />}
             <ContextMenuProvider itemId={itemId} of="drive">
               <HandlerProvider sortedContents={sortedContents}>
                 {sortedContents.length > 0 ? (

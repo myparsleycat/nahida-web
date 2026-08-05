@@ -23,7 +23,7 @@ interface ContentMenuProps {
   itemId: string;
 }
 
-function ListHead() {
+export function ListHead() {
   const view = useContentView();
   const { t } = useTranslation();
 
@@ -38,63 +38,82 @@ function ListHead() {
   };
 
   return (
-    <thead className="sticky top-0 z-10 bg-background text-sm">
-      <tr className="h-8">
-        <th className="w-full pl-3 text-left align-middle font-normal">
-          <button
-            className="flex w-full flex-row items-center justify-start"
-            onClick={() => handleSort("NAME")}
-          >
-            <div
-              className={cn(
-                "flex flex-row items-center gap-2",
-                view.sortType.startsWith("NAME") ? "text-primary" : "text-muted-foreground",
-              )}
+    <table className="w-full table-fixed border-collapse">
+      <ContentColumns />
+      <thead className="bg-background text-sm">
+        <tr className="h-8">
+          <th className="pl-3 text-left align-middle font-normal">
+            <button
+              className="flex w-full flex-row items-center justify-start"
+              onClick={() => handleSort("NAME")}
             >
-              <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.name")}</p>
-              {view.sortType === "NAME:DESC" && <ArrowDownIcon width={16} height={16} />}
-              {view.sortType === "NAME:ASC" && <ArrowUpIcon width={16} height={16} />}
-            </div>
-          </button>
-        </th>
+              <div
+                className={cn(
+                  "flex flex-row items-center gap-2",
+                  view.sortType.startsWith("NAME") ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <p className="dragselect-start-disallowed whitespace-nowrap">
+                  {t("drive.ui.name")}
+                </p>
+                {view.sortType === "NAME:DESC" && <ArrowDownIcon width={16} height={16} />}
+                {view.sortType === "NAME:ASC" && <ArrowUpIcon width={16} height={16} />}
+              </div>
+            </button>
+          </th>
 
-        <th className="w-[1%] px-2 align-middle font-normal whitespace-nowrap">
-          <button
-            className="flex w-full flex-row items-center justify-end"
-            onClick={() => handleSort("SIZE")}
-          >
-            <div
-              className={cn(
-                "flex flex-row items-center justify-end gap-2",
-                view.sortType.startsWith("SIZE") ? "text-primary" : "text-muted-foreground",
-              )}
+          <th className="px-2 align-middle font-normal whitespace-nowrap">
+            <button
+              className="flex w-full flex-row items-center justify-end"
+              onClick={() => handleSort("SIZE")}
             >
-              <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.size")}</p>
-              {view.sortType === "SIZE:DESC" && <ArrowDownIcon width={16} height={16} />}
-              {view.sortType === "SIZE:ASC" && <ArrowUpIcon width={16} height={16} />}
-            </div>
-          </button>
-        </th>
+              <div
+                className={cn(
+                  "flex flex-row items-center justify-end gap-2",
+                  view.sortType.startsWith("SIZE") ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <p className="dragselect-start-disallowed whitespace-nowrap">
+                  {t("drive.ui.size")}
+                </p>
+                {view.sortType === "SIZE:DESC" && <ArrowDownIcon width={16} height={16} />}
+                {view.sortType === "SIZE:ASC" && <ArrowUpIcon width={16} height={16} />}
+              </div>
+            </button>
+          </th>
 
-        <th className="w-[1%] pr-3 align-middle font-normal whitespace-nowrap">
-          <button
-            className="flex w-full flex-row items-center justify-end"
-            onClick={() => handleSort("DATE")}
-          >
-            <div
-              className={cn(
-                "flex flex-row items-center justify-end gap-2",
-                view.sortType.startsWith("DATE") ? "text-primary" : "text-muted-foreground",
-              )}
+          <th className="pr-3 align-middle font-normal whitespace-nowrap">
+            <button
+              className="flex w-full flex-row items-center justify-end"
+              onClick={() => handleSort("DATE")}
             >
-              <p className="dragselect-start-disallowed whitespace-nowrap">{t("drive.ui.date")}</p>
-              {view.sortType === "DATE:DESC" && <ArrowDownIcon width={16} height={16} />}
-              {view.sortType === "DATE:ASC" && <ArrowUpIcon width={16} height={16} />}
-            </div>
-          </button>
-        </th>
-      </tr>
-    </thead>
+              <div
+                className={cn(
+                  "flex flex-row items-center justify-end gap-2",
+                  view.sortType.startsWith("DATE") ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <p className="dragselect-start-disallowed whitespace-nowrap">
+                  {t("drive.ui.date")}
+                </p>
+                {view.sortType === "DATE:DESC" && <ArrowDownIcon width={16} height={16} />}
+                {view.sortType === "DATE:ASC" && <ArrowUpIcon width={16} height={16} />}
+              </div>
+            </button>
+          </th>
+        </tr>
+      </thead>
+    </table>
+  );
+}
+
+function ContentColumns() {
+  return (
+    <colgroup>
+      <col />
+      <col className="w-24" />
+      <col className="w-52" />
+    </colgroup>
   );
 }
 
@@ -112,8 +131,8 @@ export function ContentMenuList(props: ContentMenuProps) {
 
   return (
     <>
-      <table className="w-full table-auto border-collapse">
-        <ListHead />
+      <table className="w-full table-fixed border-collapse">
+        <ContentColumns />
         <tbody>
           {sortedContents.map((item, idx) => (
             <tr
@@ -130,7 +149,7 @@ export function ContentMenuList(props: ContentMenuProps) {
               onDoubleClick={getDoubleClickHandler(item, navi)}
               onContextMenu={(e) => handleItemRightClick(e, item)}
             >
-              <td className="w-full max-w-0 p-2 pl-3  text-left align-middle">
+              <td className="p-2 pl-3 text-left align-middle">
                 <div className="flex flex-row items-center gap-3">
                   <div className="flex size-11 shrink-0 items-center justify-center text-muted-foreground">
                     {isFetching && itemId === item.id ? (
@@ -150,14 +169,14 @@ export function ContentMenuList(props: ContentMenuProps) {
                       <FileIcon className="h-full w-full" />
                     )}
                   </div>
-                  <span className="block w-full truncate text-left">{item.name}</span>
+                  <span className="block truncate text-left">{item.name}</span>
                 </div>
               </td>
 
-              <td className="w-[1%] p-2 text-right align-middle text-sm whitespace-nowrap text-muted-foreground">
+              <td className="p-2 text-right align-middle text-sm whitespace-nowrap text-muted-foreground">
                 {formatSize(Number(item.size))}
               </td>
-              <td className="w-[1%] p-2 pr-3 text-right align-middle text-sm whitespace-nowrap text-muted-foreground">
+              <td className="p-2 pr-3 text-right align-middle text-sm whitespace-nowrap text-muted-foreground">
                 {formatDate(item.updatedAt, i18n.language)}
               </td>
             </tr>

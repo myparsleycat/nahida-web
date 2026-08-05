@@ -12,10 +12,10 @@ import {
   ContentMenuGrid,
   ContentMenuList,
   ContextMenuProvider,
+  ListHead,
   type Ancestor,
 } from "@/components/page/akasha";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
 import { useContentDrag, useContentView, useHandler } from "@/hooks/akasha";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
@@ -109,7 +109,7 @@ export function AkashaModContents(props: AkashaModBaseProps) {
       </div>
 
       <div
-        className="flex flex-1 flex-col overflow-auto"
+        className="flex flex-1 flex-col overflow-hidden"
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
         onDragOver={onDragOver}
@@ -124,6 +124,7 @@ export function AkashaModContents(props: AkashaModBaseProps) {
           })
         }
       >
+        {sortedContents.length > 0 && view.layout === "list" && <ListHead />}
         <ContextMenuProvider itemId={content.id} of="mod" navi={setItemId}>
           {sortedContents.length > 0 ? (
             <div>
