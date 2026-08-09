@@ -44,7 +44,9 @@ export function startStreamingDownload(params: {
                 worker.postMessage({ type: "abort" });
             } catch {}
             worker.terminate();
-            reject(new Error("Download aborted"));
+            const error = new Error("Download aborted");
+            error.name = "AbortError";
+            reject(error);
         };
 
         if (abortSignal.aborted) {

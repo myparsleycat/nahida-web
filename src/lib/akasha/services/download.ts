@@ -108,11 +108,21 @@ export async function processNextDownloadInQueue() {
         signal: abortController.signal,
     });
 
-    toast.promise(getDownloadUrlsPromise, {
-        loading: t("drive.#.processNextDownloadInQueue.toast-promise.loading"),
-        error: (err: any) =>
-            `${t("drive.#.processNextDownloadInQueue.toast-promise.error", { values: { error: err.message } })}`,
-    });
+    const loadingToastId = toast.loading(
+        t("drive.#.processNextDownloadInQueue.toast-promise.loading"),
+    );
+
+    getDownloadUrlsPromise
+        .then(() => toast.dismiss(loadingToastId))
+        .catch((err: unknown) => {
+            toast.dismiss(loadingToastId);
+            if (err instanceof Error && err.name === "AbortError") return;
+            toast.error(
+                t("drive.#.processNextDownloadInQueue.toast-promise.error", {
+                    values: { error: err instanceof Error ? err.message : String(err) },
+                }),
+            );
+        });
 
     try {
         const downloadInfo = await getDownloadUrlsPromise;
@@ -155,6 +165,7 @@ export async function processNextDownloadInQueue() {
         if (akashaStore.getState().download.queue.length > 0) {
             await processNextDownloadInQueue();
         }
+        if (error instanceof Error && error.name === "AbortError") return;
         throw error;
     }
 }
@@ -249,6 +260,11 @@ export async function startDownload(params: {
 
             const failedResults = results.filter((result) => result.status === "rejected");
             if (failedResults.length > 0) {
+                if (abortSignal.aborted) {
+                    const abortError = new Error("Download aborted");
+                    abortError.name = "AbortError";
+                    throw abortError;
+                }
                 console.error(
                     `${failedResults.length}개 파일 다운로드 실패:`,
                     failedResults.map((result) => result.reason),

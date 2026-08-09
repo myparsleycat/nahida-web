@@ -227,6 +227,11 @@ export async function startDownload(props: StartDownloadProps) {
 
         const failedCount = results.filter((r) => r.status === "rejected").length;
         if (failedCount > 0) {
+            if (abortSignal.aborted) {
+                const abortError = new Error("Download aborted");
+                abortError.name = "AbortError";
+                throw abortError;
+            }
             results.forEach((r) => {
                 if (r.status === "rejected") console.error("File download failed:", r.reason);
             });
