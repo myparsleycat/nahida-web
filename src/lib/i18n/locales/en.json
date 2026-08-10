@@ -19,7 +19,7 @@
     },
     "success": {
       "login": "Successfully logged in",
-      "mod_deleted": "The mod has been successfully deleted",
+      "mod_deleted": "The mod has been deleted",
       "mod_activated": "The mod has been activated",
       "mod_deactivated": "The mod has been deactivated",
       "mod_downloaded": "The mod has been downloaded"
@@ -210,10 +210,15 @@
       "deactivate": "Deactivate",
       "activate": "Activate",
       "delete": "Delete",
+      "force_delete": "Force delete",
       "dialog": {
         "d0": {
-          "m0": "Do you want to delete this Mod?",
-          "m1": "This action cannot be undone. Are you sure you want to delete this mode?"
+          "m0": "Do you want to delete this mod?",
+          "m1": "It will disappear from the list immediately, and this action cannot be undone."
+        },
+        "force": {
+          "m0": "Force delete this mod?",
+          "m1": "This action cannot be undone. Are you sure you want to delete this mod?"
         }
       }
     },
@@ -262,7 +267,7 @@
       },
       "no_trashed_content_section_message": "Nothing in the trash yet",
       "empty_trash_dialog": {
-        "0": "Are you sure you want to empty your trash? This action cannot be undone!",
+        "0": "Are you sure you want to empty your trash? Items will disappear from the list immediately, and cleanup continues in the background.",
         "1": "Empty"
       },
       "settings_page": {
@@ -345,12 +350,21 @@
       "2": "Restoration of {p1}, including {p2} items, has been completed."
     },
     "itemsDelete": {
-      "0": "{p1} files and directories have been permanently deleted."
+      "0": "Deletion requested for {{count}} files and directories",
+      "mod": "Deletion requested for {{count}} items",
+      "partial": "Deletion requested for {{accepted}} items; {{failed}} failed",
+      "error": "Deletion request failed",
+      "permanent": "Delete permanently",
+      "collectionTitle": "Delete this collection?",
+      "collectionDescription": "It will disappear from the list immediately, and cleanup continues in the background.",
+      "collectionSuccess": "Collection deletion request has been accepted"
     },
     "EmptyTrash": {
       "toast-promise": {
         "loading": "Emptying the trash...",
-        "success": "{p1} items have been permanently deleted."
+        "success": "Empty trash request has been accepted",
+        "completed": "Trash is already empty",
+        "error": "Failed to empty the trash"
       }
     },
     "moveItems": {

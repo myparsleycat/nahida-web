@@ -168,6 +168,8 @@ export type DeleteManyCompleteMessage = BaseMessage & {
     action: "delete_many";
     pid: string;
     deletedUUIDs: string[];
+    failedCount?: number;
+    error?: string;
 };
 
 export type DownloadFileCompleteMessage = BaseMessage & {

@@ -1,6 +1,10 @@
 import type { Content } from "@/lib/akasha/types";
 
-import { eden } from "@/lib/eden";
+import {
+    deleteModItems,
+    requireBatchAccepted,
+    type BatchDeletionOutcome,
+} from "@/lib/akasha/services/deletion";
 
 export function parseModPath(pathname: string) {
     const cleanedPath = pathname.replace(/^\/+|\/+$/g, "");
@@ -31,15 +35,11 @@ export function parseModPath(pathname: string) {
     };
 }
 
-export async function DeleteItem(items: Content[], sig?: string) {
-    const ids = items.map((i) => i.id);
-
-    const { error } = await eden.akasha.mod.item.delete({
-        ids,
-        sig,
-    });
-
-    if (error) {
-        throw new Error(error.value.toString());
-    }
+export async function DeleteItem(items: Content[], sig?: string): Promise<BatchDeletionOutcome> {
+    return requireBatchAccepted(
+        await deleteModItems(
+            items.map((item) => item.id),
+            sig,
+        ),
+    );
 }

@@ -308,18 +308,35 @@ function RouteComponent() {
                     onClick={async () => {
                       const ids = selectedItems.map((i) => i.id);
                       try {
-                        await akasha.deleteMany(ids);
+                        const outcome = await akasha.deleteMany(ids);
                         await refetcher();
-                        toast.success("Success");
+                        if (outcome.acceptedIds.length === 0) {
+                          throw new Error(outcome.errorMessage || t("#.itemsDelete.error"));
+                        }
+                        if (outcome.errorMessage) {
+                          toast.warning(
+                            t("#.itemsDelete.partial", {
+                              accepted: outcome.acceptedIds.length,
+                              failed: outcome.requestedIds.length - outcome.acceptedIds.length,
+                            }),
+                            { description: outcome.errorMessage },
+                          );
+                          return;
+                        }
+                        toast.success(
+                          t("#.itemsDelete.0", {
+                            count: outcome.acceptedIds.length,
+                          }),
+                        );
                       } catch (err) {
-                        toast.error("Error", {
+                        toast.error(t("#.itemsDelete.error"), {
                           description: err instanceof Error ? err.message : String(err),
                         });
                       }
                     }}
                   >
                     <DeleteIcon width={18} height={18} />
-                    영구 삭제
+                    {t("#.itemsDelete.permanent")}
                   </ContextMenuItem>
                 </>
               )}

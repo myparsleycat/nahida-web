@@ -451,10 +451,25 @@ function ContextMenuModContentSnippet({
                 className="gap-x-2"
                 onClick={async () => {
                   try {
-                    await DeleteItem(selectedItems, sig);
+                    const outcome = await DeleteItem(selectedItems, sig);
                     await queryClient.refetchQueries({
                       queryKey: ["akasha", "mod", "item", itemId],
                     });
+                    if (outcome.errorMessage) {
+                      toast.warning(
+                        t("#.itemsDelete.partial", {
+                          accepted: outcome.acceptedIds.length,
+                          failed: outcome.requestedIds.length - outcome.acceptedIds.length,
+                        }),
+                        { description: outcome.errorMessage },
+                      );
+                      return;
+                    }
+                    toast.success(
+                      t("#.itemsDelete.mod", {
+                        count: outcome.acceptedIds.length,
+                      }),
+                    );
                   } catch (err) {
                     if (err instanceof Error && err.message === "invalid sig") {
                       toast.warning(err.message, {
@@ -468,7 +483,7 @@ function ContextMenuModContentSnippet({
                 }}
               >
                 <DeleteIcon width={18} height={18} />
-                Delete
+                {t("g.delete")}
               </ContextMenuItem>
             </>
           )}

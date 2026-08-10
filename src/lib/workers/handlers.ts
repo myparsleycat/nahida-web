@@ -1,3 +1,5 @@
+import { deleteDriveItems } from "@/lib/akasha/services/deletion";
+
 import type {
     CreateDirAction,
     CreateDirCompleteMessage,
@@ -182,20 +184,19 @@ export async function handleDeleteMany(action: DeleteManyAction, semaphore: Sema
     try {
         const { uuids } = action;
         await semaphore.acquire();
+        const outcome = await deleteDriveItems(uuids);
 
-        const { error } = await eden.akasha.content.delete_many.post({
-            uuids,
-        });
-
-        if (error) {
-            throw new Error(error.value.toString());
+        if (outcome.acceptedIds.length === 0) {
+            throw new Error(outcome.errorMessage || "delete_failed");
         }
 
         self.postMessage({
             type: "complete",
             action: "delete_many",
-            success: true,
-            deletedUUIDs: uuids,
+            success: !outcome.errorMessage,
+            deletedUUIDs: outcome.acceptedIds,
+            failedCount: outcome.requestedIds.length - outcome.acceptedIds.length,
+            error: outcome.errorMessage,
             pid: "",
         } satisfies DeleteManyCompleteMessage);
     } catch (error) {

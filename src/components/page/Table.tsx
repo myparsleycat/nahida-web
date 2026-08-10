@@ -390,7 +390,7 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
               className="cursor-pointer text-base"
               onClick={() => setForceDeleteDialogOpen(true)}
             >
-              완전 삭제
+              {t("c.data-table-actions.force_delete")}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -440,10 +440,8 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
       <Dialog open={isForceDeleteDialogOpen} onOpenChange={setForceDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>모드를 완전히 삭제할까요?</DialogTitle>
-            <DialogDescription>
-              이 작업은 되돌릴 수 없어요. 정말로 이 모드를 삭제할까요?
-            </DialogDescription>
+            <DialogTitle>{t("c.data-table-actions.dialog.force.m0")}</DialogTitle>
+            <DialogDescription>{t("c.data-table-actions.dialog.force.m1")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4"></div>
           <DialogFooter>
@@ -471,7 +469,7 @@ export function Actions({ id, isStaff, vv }: { id: string; isStaff?: boolean; vv
                   className="h-5 w-5 animate-spin transition-transform"
                 />
               ) : (
-                <>삭제</>
+                t("g.delete")
               )}
             </Button>
           </DialogFooter>

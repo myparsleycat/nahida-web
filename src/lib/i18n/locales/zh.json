@@ -21,7 +21,7 @@
       "favorite_added": "已添加到收藏夹",
       "favorite_removed": "已从收藏夹移除",
       "login": "登录成功",
-      "mod_deleted": "模组删除完成",
+      "mod_deleted": "模组已删除",
       "mod_activated": "模组已激活",
       "mod_deactivated": "模组已停用",
       "mod_downloaded": "模组已下载"
@@ -191,9 +191,14 @@
       "deactivate": "停用",
       "activate": "激活",
       "delete": "删除",
+      "force_delete": "强制删除",
       "dialog": {
         "d0": {
           "m0": "是否删除此模组？",
+          "m1": "删除后会立即从列表中消失，且此操作无法撤销。"
+        },
+        "force": {
+          "m0": "是否强制删除此模组？",
           "m1": "此操作无法撤销。您确定要删除此模组吗？"
         }
       }
@@ -242,7 +247,7 @@
       },
       "no_trashed_content_section_message": "回收站内还没有任何内容",
       "empty_trash_dialog": {
-        "0": "确定要清空回收站吗？此操作无法撤销或恢复。",
+        "0": "确定要清空回收站吗？请求受理后会立即从列表中消失，清理将在后台继续进行。",
         "1": "清空"
       },
       "settings_page": {
@@ -324,12 +329,21 @@
       "2": "已完成{p2}个恢复，包括{p1}"
     },
     "itemsDelete": {
-      "0": "已永久删除{p1}个文件和目录"
+      "0": "已受理{{count}}个文件和目录的删除请求",
+      "mod": "已受理{{count}}个项目的删除请求",
+      "partial": "已受理{{accepted}}个删除请求，{{failed}}个失败",
+      "error": "删除请求失败",
+      "permanent": "永久删除",
+      "collectionTitle": "要删除此合集吗？",
+      "collectionDescription": "请求受理后会立即从列表中消失，清理将在后台继续进行。",
+      "collectionSuccess": "已受理合集删除请求"
     },
     "EmptyTrash": {
       "toast-promise": {
         "loading": "正在清空回收站...",
-        "success": "已完全删除{p1}个项目"
+        "success": "已受理清空回收站请求",
+        "completed": "回收站已经是空的",
+        "error": "无法清空回收站"
       }
     },
     "moveItems": {

@@ -7,6 +7,7 @@ import {
   Trash as TrashIcon,
 } from "pixelarticons/react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { AkashaModData } from "@/lib/akasha/services/drive-types";
@@ -33,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
+import { deleteModCollection } from "@/lib/akasha/services/deletion";
 import { parseModPath } from "@/lib/akasha/services/mod-drive/common";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
@@ -45,6 +47,7 @@ interface CollectionListProps {
 }
 
 export function CollectionList(props: CollectionListProps) {
+  const { t } = useTranslation();
   const { data } = props;
   const router = useRouter();
   const { sig, modId, collectionId, itemId, setItemId, modQuery, setCollectionId } =
@@ -77,14 +80,7 @@ export function CollectionList(props: CollectionListProps) {
     mutationKey: ["akasha", "mod", "collection", "delete"],
     mutationFn: async ({ id }: { id: string }) => {
       if (!id) return;
-
-      const { error } = await eden.akasha.mod.collection({ id }).delete({
-        query: { sig },
-      });
-
-      if (error) {
-        throw new Error(error.value.toString());
-      }
+      await deleteModCollection(id, sig);
     },
   });
 
@@ -214,12 +210,15 @@ export function CollectionList(props: CollectionListProps) {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                      <AlertDialogTitle>{t("#.itemsDelete.collectionTitle")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("#.itemsDelete.collectionDescription")}
+                      </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
                       <AlertDialogAction
+                        disabled={delMut.isPending}
                         onClick={async () => {
                           try {
                             await delMut.mutateAsync({ id: collection.id });
@@ -232,12 +231,13 @@ export function CollectionList(props: CollectionListProps) {
                             if (collectionId === collection.id) {
                               setCollectionId("");
                             }
+                            toast.success(t("#.itemsDelete.collectionSuccess"));
                           } catch (error) {
                             toast.error(error instanceof Error ? error.message : String(error));
                           }
                         }}
                       >
-                        Continue
+                        {t("g.delete")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

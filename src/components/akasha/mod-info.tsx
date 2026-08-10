@@ -769,6 +769,7 @@ function AnalyticsDialog(props: AnalyticsDialogProps) {
 }
 
 function TopButtons() {
+  const { t } = useTranslation();
   const { modId, modQuery, sig } = useModContext();
   const session = useSession();
   const navi = useNavigate();
@@ -789,7 +790,7 @@ function TopButtons() {
       }
     },
     onSuccess: async () => {
-      toast.success("모드가 삭제되었어요");
+      toast.success(t("toast.success.mod_deleted"));
       await navi({ to: "/u/mods" }).catch((error: unknown) => {
         console.error("Failed to navigate after mod deletion:", error);
       });
@@ -822,9 +823,9 @@ function TopButtons() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>모드를 완전히 삭제할까요?</AlertDialogTitle>
+                <AlertDialogTitle>{t("c.data-table-actions.dialog.d0.m0")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  이 작업은 되돌릴 수 없어요. 정말로 이 모드를 삭제할까요?
+                  {t("c.data-table-actions.dialog.d0.m1")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

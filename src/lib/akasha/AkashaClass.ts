@@ -15,6 +15,7 @@ import { akashaStore } from "@/stores/akasha-queue.store";
 
 import type { Content, QueuedProcess } from "./types";
 
+import { deleteDriveItems, emptyDriveTrash } from "./services/deletion";
 import { completeCurrentDownload, processNextDownloadInQueue } from "./services/download";
 import { collectDirectoryStructure, collectFiles, isNameConflict, saveFile } from "./services/fs";
 import { setting } from "./services/setting";
@@ -224,16 +225,39 @@ class AkashaClass {
                                 break;
 
                             case "delete_many":
-                                const deleted = message.deletedUUIDs;
-                                toast.success(
-                                    `${deleted.length}개의 파일 및 디렉토리가 삭제되었습니다`,
-                                );
+                                if (message.failedCount && message.failedCount > 0) {
+                                    toast.warning(
+                                        t("#.itemsDelete.partial", {
+                                            accepted: message.deletedUUIDs.length,
+                                            failed: message.failedCount,
+                                        }),
+                                        {
+                                            description: message.error,
+                                        },
+                                    );
+                                } else {
+                                    toast.success(
+                                        t("#.itemsDelete.0", {
+                                            count: message.deletedUUIDs.length,
+                                        }),
+                                    );
+                                }
                                 await queryClient
                                     .refetchQueries({
                                         queryKey: ["akasha", "drive", "item"],
                                     })
                                     .catch((error: unknown) => {
                                         console.error("Failed to refresh after delete:", error);
+                                    });
+                                await queryClient
+                                    .refetchQueries({
+                                        queryKey: ["akasha:drive:trash"],
+                                    })
+                                    .catch((error: unknown) => {
+                                        console.error(
+                                            "Failed to refresh trash after delete:",
+                                            error,
+                                        );
                                     });
 
                                 break;
@@ -253,6 +277,10 @@ class AkashaClass {
                                     console.error("Failed to advance failed upload queue:", error);
                                 });
                             }
+                        } else {
+                            toast.error(t("#.itemsDelete.error"), {
+                                description: message.error,
+                            });
                         }
                         console.error("Worker error:", message);
                         workIsDone = true;
@@ -497,25 +525,11 @@ class AkashaClass {
     }
 
     async deleteMany(ids: string[]) {
-        const { data, error } = await eden.akasha.content.delete_many.post({
-            uuids: ids,
-        });
-
-        if (error) {
-            throw new Error(error.value.toString());
-        }
-
-        return data;
+        return deleteDriveItems(ids);
     }
 
     async empty() {
-        const { data, error } = await eden.akasha.content.trash.empty.post();
-
-        if (error) {
-            throw new Error(error.value.toString());
-        }
-
-        return data;
+        return emptyDriveTrash();
     }
 
     item(item: Content) {

@@ -21,7 +21,7 @@
       "favorite_added": "즐겨찾기에 추가됐어요",
       "favorite_removed": "즐겨찾에서 삭제됐어요",
       "login": "성공적으로 로그인했습니다",
-      "mod_deleted": "모드 삭제가 완료되었습니다",
+      "mod_deleted": "모드가 삭제되었어요",
       "mod_activated": "모드가 활성화 되었습니다",
       "mod_deactivated": "모드가 비활성화 되었습니다",
       "mod_downloaded": "모드가 다운로드 되었습니다"
@@ -201,9 +201,14 @@
       "deactivate": "비활성화",
       "activate": "활성화",
       "delete": "삭제",
+      "force_delete": "강제 삭제",
       "dialog": {
         "d0": {
           "m0": "모드를 삭제할까요?",
+          "m1": "삭제하면 목록에서 바로 사라지고, 이 작업은 되돌릴 수 없어요."
+        },
+        "force": {
+          "m0": "모드를 강제 삭제할까요?",
           "m1": "이 작업은 되돌릴 수 없어요. 정말로 이 모드를 삭제할까요?"
         }
       }
@@ -253,7 +258,7 @@
       },
       "no_trashed_content_section_message": "아직 휴지통에 아무것도 없어요",
       "empty_trash_dialog": {
-        "0": "정말 휴지통을 비울까요? 이 작업은 실행 취소하거나 되돌릴 수 없어요.",
+        "0": "정말 휴지통을 비울까요? 요청이 접수되면 목록에서 바로 사라지고, 정리는 백그라운드에서 진행됩니다.",
         "1": "비우기"
       },
       "settings_page": {
@@ -336,12 +341,21 @@
       "2": "{p1}를 포함한 {p2}개의 복원이 완료되었습니다"
     },
     "itemsDelete": {
-      "0": "{p1}개의 파일 및 디렉토리가 영구 삭제되었습니다"
+      "0": "{{count}}개의 파일 및 디렉토리 삭제 요청이 접수되었어요",
+      "mod": "{{count}}개 삭제 요청이 접수되었어요",
+      "partial": "{{accepted}}개 삭제 요청이 접수되었고, {{failed}}개는 실패했어요",
+      "error": "삭제 요청에 실패했어요",
+      "permanent": "영구 삭제",
+      "collectionTitle": "컬렉션을 삭제할까요?",
+      "collectionDescription": "삭제 요청이 접수되면 목록에서 바로 사라지고, 정리는 백그라운드에서 진행됩니다.",
+      "collectionSuccess": "컬렉션 삭제 요청이 접수되었어요"
     },
     "EmptyTrash": {
       "toast-promise": {
         "loading": "휴지통 비우는 중...",
-        "success": "{p1}개가 완전 삭제되었습니다"
+        "success": "휴지통 비우기 요청이 접수되었어요",
+        "completed": "휴지통이 이미 비어 있어요",
+        "error": "휴지통을 비우지 못했어요"
       }
     },
     "moveItems": {
