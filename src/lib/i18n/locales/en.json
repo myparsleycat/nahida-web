@@ -234,6 +234,12 @@
         "no_transfer_yet": "No transfer yet"
       },
       "search_in_dir_placeholder": "Search in this directory...",
+      "search_in_subdirs_placeholder": "Search in subfolders...",
+      "search_include_subdirs": "Include subfolders",
+      "search_min_chars_hint": "Enter at least 2 characters",
+      "search_no_results": "No search results",
+      "search_load_more": "Load more",
+      "search_unavailable": "Search is unavailable",
       "transfers": "Transfers",
       "drive": "Drive",
       "my_drive": "My Drive",

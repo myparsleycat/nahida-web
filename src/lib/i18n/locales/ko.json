@@ -225,6 +225,12 @@
         "no_transfer_yet": "현재 활성화된 전송이 없습니다"
       },
       "search_in_dir_placeholder": "이 디렉토리에서 검색...",
+      "search_in_subdirs_placeholder": "하위 폴더에서 검색...",
+      "search_include_subdirs": "하위 폴더 포함",
+      "search_min_chars_hint": "두 글자 이상 입력하세요",
+      "search_no_results": "검색 결과가 없습니다",
+      "search_load_more": "더 보기",
+      "search_unavailable": "검색을 사용할 수 없습니다",
       "transfers": "전송",
       "drive": "드라이브",
       "my_drive": "내 드라이브",

@@ -14,6 +14,7 @@ import {
   Monitor as MonitorIcon,
   Plus as PlusIcon,
   Search as SearchIcon,
+  Tree as TreeIcon,
   Upload as UploadIcon,
 } from "pixelarticons/react";
 import { useEffect, useState } from "react";
@@ -49,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useContentView } from "@/hooks/akasha";
 import { akasha, useDialogStore, type Content } from "@/lib/akasha";
 import { startAkashaDownloadForDesktop } from "@/lib/akasha/services/drive-download";
@@ -64,6 +66,7 @@ import { ProcessSheet } from "./ProcessSheet";
 interface AkashaHeadButtonsProps {
   of: "drive" | "link" | "mod";
   content: Content;
+  itemId?: string;
   link?: {
     linkId: string;
     token: string;
@@ -74,12 +77,19 @@ interface AkashaHeadButtonsProps {
 }
 
 export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
-  const { of, content, link, modQuery, modAccessToken, modSig } = props;
+  const { of, content, itemId, link, modQuery, modAccessToken, modSig } = props;
   const { t } = useTranslation();
   const dialog = useDialogStore();
   const view = useContentView();
   const { data: session } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
+  const canSearchSubdirs = (of === "drive" && itemId !== "share") || of === "link";
+  const searchPlaceholder =
+    canSearchSubdirs && view.includeSubdirs
+      ? t("drive.ui.search_in_subdirs_placeholder")
+      : t("drive.ui.search_in_dir_placeholder");
+  const showMinCharsHint =
+    canSearchSubdirs && view.includeSubdirs && view.searchInDirQuery.trim().length === 1;
 
   async function handleDownload() {
     if (of === "link" && !link) return;
@@ -111,16 +121,43 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
   return (
     <>
       <div className="flex shrink-0 items-center gap-1.5 md:ml-4 md:gap-3">
-        <div className="relative hidden w-full md:block">
-          <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
-          <Input
-            className="w-50 pl-8 dark:bg-transparent"
-            placeholder={t("drive.ui.search_in_dir_placeholder")}
-            value={view.searchInDirQuery}
-            onValueChange={view.setSearchInDirQuery}
-            onFocus={() => view.setFocusSearchInputState(true)}
-            onBlur={() => view.setFocusSearchInputState(false)}
-          />
+        <div className="relative hidden items-center gap-2 md:flex">
+          <div className="relative">
+            <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <Input
+              className="w-50 pl-8 dark:bg-transparent"
+              placeholder={searchPlaceholder}
+              value={view.searchInDirQuery}
+              onValueChange={view.setSearchInDirQuery}
+              onFocus={() => view.setFocusSearchInputState(true)}
+              onBlur={() => view.setFocusSearchInputState(false)}
+            />
+          </div>
+          {canSearchSubdirs && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-pressed={view.includeSubdirs}
+                  aria-label={t("drive.ui.search_include_subdirs")}
+                  className={cn(
+                    view.includeSubdirs && "bg-muted text-primary",
+                    !view.includeSubdirs && "text-muted-foreground",
+                  )}
+                  onClick={() => view.setIncludeSubdirs(!view.includeSubdirs)}
+                >
+                  <TreeIcon />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("drive.ui.search_include_subdirs")}</TooltipContent>
+            </Tooltip>
+          )}
+          {showMinCharsHint && (
+            <small className="whitespace-nowrap text-muted-foreground">
+              {t("drive.ui.search_min_chars_hint")}
+            </small>
+          )}
         </div>
 
         <Button
@@ -128,7 +165,7 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
           size="icon"
           className="md:hidden"
           onClick={() => setSearchOpen((v) => !v)}
-          aria-label={t("drive.ui.search_in_dir_placeholder")}
+          aria-label={searchPlaceholder}
         >
           <SearchIcon />
         </Button>
@@ -258,16 +295,45 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
       </div>
 
       {searchOpen && (
-        <div className="relative w-full md:hidden">
-          <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
-          <Input
-            className="w-full pl-8 dark:bg-transparent"
-            placeholder={t("drive.ui.search_in_dir_placeholder")}
-            value={view.searchInDirQuery}
-            onValueChange={view.setSearchInDirQuery}
-            onFocus={() => view.setFocusSearchInputState(true)}
-            onBlur={() => view.setFocusSearchInputState(false)}
-          />
+        <div className="flex w-full flex-col gap-2 md:hidden">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute top-2 left-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <Input
+                className="w-full pl-8 dark:bg-transparent"
+                placeholder={searchPlaceholder}
+                value={view.searchInDirQuery}
+                onValueChange={view.setSearchInDirQuery}
+                onFocus={() => view.setFocusSearchInputState(true)}
+                onBlur={() => view.setFocusSearchInputState(false)}
+              />
+            </div>
+            {canSearchSubdirs && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-pressed={view.includeSubdirs}
+                    aria-label={t("drive.ui.search_include_subdirs")}
+                    className={cn(
+                      view.includeSubdirs && "bg-muted text-primary",
+                      !view.includeSubdirs && "text-muted-foreground",
+                    )}
+                    onClick={() => view.setIncludeSubdirs(!view.includeSubdirs)}
+                  >
+                    <TreeIcon />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("drive.ui.search_include_subdirs")}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+          {showMinCharsHint && (
+            <p className="text-muted-foreground">
+              <small>{t("drive.ui.search_min_chars_hint")}</small>
+            </p>
+          )}
         </div>
       )}
     </>

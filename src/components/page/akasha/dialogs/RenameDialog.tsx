@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export function RenameDialog() {
   const dialog = useDialogStore();
   const selection = useContentSelection();
   const itemId = useParams({ from: "/akasha/drive/$itemId" }).itemId;
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationKey: ["akasha", "rename", itemId],
@@ -77,6 +78,9 @@ export function RenameDialog() {
               loading: t("#.RenameItem.toast-promise.loading"),
               success: async () => {
                 await akasha.refetch({ itemId });
+                await queryClient.refetchQueries({
+                  queryKey: ["akasha", "drive", "search"],
+                });
                 dialog.setOpen("renameDialog", false);
                 return t("#.RenameItem.toast-promise.success");
               },

@@ -214,6 +214,12 @@
         "no_transfer_yet": "当前没有活跃的传输"
       },
       "search_in_dir_placeholder": "在此目录中搜索...",
+      "search_in_subdirs_placeholder": "在子文件夹中搜索...",
+      "search_include_subdirs": "包含子文件夹",
+      "search_min_chars_hint": "请输入至少 2 个字符",
+      "search_no_results": "没有搜索结果",
+      "search_load_more": "加载更多",
+      "search_unavailable": "搜索暂不可用",
       "transfers": "传输",
       "drive": "云盘",
       "my_drive": "我的云盘",

@@ -205,6 +205,9 @@ export function HandlerProvider(props: HandlerProviderProps) {
                 void queryClient.refetchQueries({
                   queryKey: ["akasha", "drive", "item"],
                 });
+                void queryClient.refetchQueries({
+                  queryKey: ["akasha", "drive", "search"],
+                });
                 return `${t("#.moveItems.toast-promise.success")}`;
               },
               error: (err: unknown) =>
@@ -225,6 +228,9 @@ export function HandlerProvider(props: HandlerProviderProps) {
               success: () => {
                 void queryClient.refetchQueries({
                   queryKey: ["akasha", "drive", "item"],
+                });
+                void queryClient.refetchQueries({
+                  queryKey: ["akasha", "drive", "search"],
                 });
                 return "복사되었습니다";
               },

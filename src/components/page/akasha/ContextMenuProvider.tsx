@@ -117,6 +117,9 @@ function ContextMenuContentSnippet(props: ContextMenuContentSnippetProps) {
       await queryClient.refetchQueries({
         queryKey: ["akasha", "drive", "item", itemId],
       });
+      await queryClient.refetchQueries({
+        queryKey: ["akasha", "drive", "search"],
+      });
       toast.success(`${resp.length}개의 파일 및 디렉토리가 휴지통으로 이동되었습니다`);
       setSelectedItems([]);
     },
