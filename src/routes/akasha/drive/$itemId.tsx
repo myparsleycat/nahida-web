@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Folder as FolderIcon } from "pixelarticons/react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { z } from "zod";
+
+import type { Content } from "@/lib/akasha";
 
 import { AliceLoader, Center, ServerCrash } from "@/components/common";
 import {
@@ -17,6 +20,7 @@ import {
   ListHead,
 } from "@/components/page/akasha";
 import { NewDirectoryDialog, PubLinkDialog, RenameDialog } from "@/components/page/akasha/dialogs";
+import { Button } from "@/components/ui/button";
 import { useContentDrag, useContentView, useHandler, useQueryData } from "@/hooks/akasha";
 import { eden } from "@/lib/eden";
 import { getChosung, getSearchScore } from "@/lib/sejong";
@@ -39,6 +43,11 @@ function RouteComponent() {
   const view = useContentView();
   const queryData = useQueryData();
   const { onDragEnter, onDragLeave, onDragOver, onDrop } = useHandler();
+
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [extraItems, setExtraItems] = useState<Content[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const query = useQuery({
     queryKey: ["akasha", "drive", "item", itemId],
@@ -71,7 +80,55 @@ function RouteComponent() {
     if (view.searchInDirQuery) {
       view.setSearchInDirQuery("");
     }
+    setDebouncedQ("");
   }, [itemId]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedQ(view.searchInDirQuery.trim());
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [view.searchInDirQuery]);
+
+  const isSubdirSearchMode = view.includeSubdirs && itemId !== "share";
+  const trimmedQuery = view.searchInDirQuery.trim();
+  const isSearching = isSubdirSearchMode && trimmedQuery.length >= 2;
+  const isDescendantSearch = isSearching && debouncedQ.length >= 2;
+
+  const searchQuery = useQuery({
+    queryKey: ["akasha", "drive", "search", itemId, debouncedQ],
+    enabled: isDescendantSearch,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await eden.akasha.content({ id: itemId }).search.get({
+        query: { q: debouncedQ, limit: 50 },
+      });
+
+      if (error) {
+        if (error.status === 503) {
+          toast.error(t("drive.ui.search_unavailable"));
+          throw new Error("search_unavailable");
+        }
+
+        throw new Error(error.value.toString());
+      }
+
+      return data!;
+    },
+  });
+
+  useEffect(() => {
+    setExtraItems([]);
+    setNextCursor(null);
+  }, [itemId, debouncedQ]);
+
+  useEffect(() => {
+    if (searchQuery.data) {
+      setNextCursor(searchQuery.data.nextCursor);
+    }
+  }, [searchQuery.data]);
 
   const rawContents = useMemo(() => {
     if (!query.data?.children) return [];
@@ -79,31 +136,66 @@ function RouteComponent() {
     return commonSort([...query.data?.children], view.sortType);
   }, [query.data?.children, view.sortType]);
 
-  const sortedContents = useMemo(() => {
+  const localContents = useMemo(() => {
     if (!rawContents) return [];
-    if (!view.searchInDirQuery) return rawContents;
+    if (isSubdirSearchMode || !view.searchInDirQuery) return rawContents;
 
-    const query = view.searchInDirQuery.toLowerCase();
-    const isChosungSearch = /^[ㄱ-ㅎ]+$/.test(query);
+    const searchQueryText = view.searchInDirQuery.toLowerCase();
+    const isChosungSearch = /^[ㄱ-ㅎ]+$/.test(searchQueryText);
 
     return rawContents
       .map((item) => ({
         item,
-        score: getSearchScore(item.name, query),
+        score: getSearchScore(item.name, searchQueryText),
       }))
       .filter(({ item, score }) => {
         if (score > 0) return true;
 
         if (isChosungSearch) {
           const itemChosung = getChosung(item.name.toLowerCase());
-          return itemChosung.includes(query);
+          return itemChosung.includes(searchQueryText);
         }
 
         return false;
       })
       .sort((a, b) => b.score - a.score)
       .map(({ item }) => item);
-  }, [rawContents, view.searchInDirQuery]);
+  }, [rawContents, view.searchInDirQuery, isSubdirSearchMode]);
+
+  const searchContents = useMemo(() => {
+    if (!searchQuery.data) return extraItems;
+    return [...searchQuery.data.items, ...extraItems];
+  }, [searchQuery.data, extraItems]);
+
+  const displayContents = isDescendantSearch ? searchContents : isSearching ? [] : localContents;
+  const isSearchPending =
+    isSearching && (!isDescendantSearch || (searchQuery.isFetching && searchContents.length === 0));
+  const isSearchFailed = isDescendantSearch && searchQuery.isError;
+  const isSearchEmpty =
+    isDescendantSearch &&
+    searchQuery.isFetched &&
+    !searchQuery.isError &&
+    searchContents.length === 0;
+
+  async function loadMore() {
+    if (!nextCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    const { data, error } = await eden.akasha
+      .content({ id: itemId })
+      .search.get({
+        query: { q: debouncedQ, limit: 50, cursor: nextCursor },
+      })
+      .finally(() => setIsLoadingMore(false));
+
+    if (error || !data) {
+      toast.error(t("drive.ui.search_unavailable"));
+      return;
+    }
+
+    setExtraItems((prev) => [...prev, ...data.items]);
+    setNextCursor(data.nextCursor);
+  }
 
   if (!query.data && query.isFetching) {
     return (
@@ -128,7 +220,7 @@ function RouteComponent() {
               <AkashaBreadcrumb itemId={itemId} ancestors={query.data.ancestors} />
             </div>
 
-            <AkashaHeadButtons of="drive" content={query.data.content!} />
+            <AkashaHeadButtons of="drive" content={query.data.content!} itemId={itemId} />
           </div>
 
           <div
@@ -138,24 +230,38 @@ function RouteComponent() {
             onDragOver={onDragOver}
             onDrop={(e) => onDrop({ e, rawContents, itemId, of: "drive" })}
           >
-            {sortedContents.length > 0 && view.layout === "list" && <ListHead />}
+            {displayContents.length > 0 && view.layout === "list" && <ListHead />}
             <ContextMenuProvider itemId={itemId} of="drive">
-              <HandlerProvider sortedContents={sortedContents}>
-                {sortedContents.length > 0 ? (
+              <HandlerProvider sortedContents={displayContents}>
+                {displayContents.length > 0 ? (
                   <div>
                     {view.layout === "list" ? (
                       <ContentMenuList
-                        sortedContents={sortedContents}
+                        sortedContents={displayContents}
                         isFetching={query.isFetching}
                         itemId={itemId}
                       />
                     ) : view.layout === "grid" ? (
                       <ContentMenuGrid
-                        sortedContents={sortedContents}
+                        sortedContents={displayContents}
                         isFetching={query.isFetching}
                         itemId={itemId}
                       />
                     ) : null}
+
+                    {isDescendantSearch && nextCursor && (
+                      <div className="flex justify-center p-4">
+                        <Button
+                          variant="outline"
+                          disabled={isLoadingMore}
+                          onClick={() => {
+                            void loadMore();
+                          }}
+                        >
+                          {t("drive.ui.search_load_more")}
+                        </Button>
+                      </div>
+                    )}
 
                     {drag.uploadDragging && (
                       <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/10">
@@ -167,7 +273,20 @@ function RouteComponent() {
                       </div>
                     )}
                   </div>
-                ) : query.isFetched && sortedContents.length < 1 ? (
+                ) : isSearchFailed ? (
+                  <Center className="flex-col">
+                    <p className="text-center text-lg">{t("drive.ui.search_unavailable")}</p>
+                  </Center>
+                ) : isSearchEmpty ? (
+                  <Center className="flex-col">
+                    <div>
+                      <FolderIcon width={80} height={80} />
+                    </div>
+                    <p className="mt-4 text-center text-lg">{t("drive.ui.search_no_results")}</p>
+                  </Center>
+                ) : isSearchPending || (query.isFetching && displayContents.length === 0) ? (
+                  <AkashaSkeleton />
+                ) : query.isFetched ? (
                   <Center className="flex-col">
                     <div>
                       <FolderIcon width={80} height={80} />
@@ -179,8 +298,6 @@ function RouteComponent() {
                       {t("drive.ui.no_contents_section_message.1")}
                     </p>
                   </Center>
-                ) : query.isFetching && sortedContents.length === 0 ? (
-                  <AkashaSkeleton />
                 ) : null}
               </HandlerProvider>
             </ContextMenuProvider>
@@ -188,7 +305,7 @@ function RouteComponent() {
         </div>
 
         <RenameDialog />
-        <NewDirectoryDialog contents={sortedContents} />
+        <NewDirectoryDialog contents={rawContents} />
         <PubLinkDialog />
       </>
     );
