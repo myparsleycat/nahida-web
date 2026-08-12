@@ -83,7 +83,7 @@ export function AkashaHeadButtons(props: AkashaHeadButtonsProps) {
   const view = useContentView();
   const { data: session } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
-  const canSearchSubdirs = of === "drive" && itemId !== "share";
+  const canSearchSubdirs = (of === "drive" && itemId !== "share") || of === "link";
   const searchPlaceholder =
     canSearchSubdirs && view.includeSubdirs
       ? t("drive.ui.search_in_subdirs_placeholder")
