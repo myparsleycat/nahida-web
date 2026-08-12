@@ -126,9 +126,8 @@ function RouteComponent() {
   }, [itemId, debouncedQ]);
 
   useEffect(() => {
-    if (searchQuery.data) {
-      setNextCursor(searchQuery.data.nextCursor);
-    }
+    setExtraItems([]);
+    setNextCursor(searchQuery.data?.nextCursor ?? null);
   }, [searchQuery.data]);
 
   const rawContents = useMemo(() => {
