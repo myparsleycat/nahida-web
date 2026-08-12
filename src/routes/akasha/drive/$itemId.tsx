@@ -122,6 +122,7 @@ function RouteComponent() {
   useEffect(() => {
     setExtraItems([]);
     setNextCursor(null);
+    setIsLoadingMore(false);
   }, [itemId, debouncedQ]);
 
   useEffect(() => {
@@ -180,6 +181,7 @@ function RouteComponent() {
   async function loadMore() {
     if (!nextCursor || isLoadingMore) return;
 
+    const identity = `${itemId}:${debouncedQ}`;
     setIsLoadingMore(true);
     const { data, error } = await eden.akasha
       .content({ id: itemId })
@@ -187,6 +189,8 @@ function RouteComponent() {
         query: { q: debouncedQ, limit: 50, cursor: nextCursor },
       })
       .finally(() => setIsLoadingMore(false));
+
+    if (identity !== `${itemId}:${debouncedQ}`) return;
 
     if (error || !data) {
       toast.error(t("drive.ui.search_unavailable"));
@@ -284,7 +288,7 @@ function RouteComponent() {
                     </div>
                     <p className="mt-4 text-center text-lg">{t("drive.ui.search_no_results")}</p>
                   </Center>
-                ) : isSearchPending || (query.isFetching && displayContents.length === 0) ? (
+                ) : isSearchPending ? (
                   <AkashaSkeleton />
                 ) : query.isFetched ? (
                   <Center className="flex-col">
@@ -298,6 +302,8 @@ function RouteComponent() {
                       {t("drive.ui.no_contents_section_message.1")}
                     </p>
                   </Center>
+                ) : query.isFetching && displayContents.length === 0 ? (
+                  <AkashaSkeleton />
                 ) : null}
               </HandlerProvider>
             </ContextMenuProvider>

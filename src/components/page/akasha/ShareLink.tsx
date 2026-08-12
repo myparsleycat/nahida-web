@@ -65,7 +65,7 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
   const isDescendantSearch = isSearching && debouncedQ.length >= 2;
 
   const searchQuery = useQuery({
-    queryKey: ["akasha", "link", "search", currentId, debouncedQ],
+    queryKey: ["akasha", "link", "search", link.linkId, currentId, debouncedQ],
     enabled: isDescendantSearch,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
@@ -94,7 +94,8 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
   useEffect(() => {
     setExtraItems([]);
     setNextCursor(null);
-  }, [currentId, debouncedQ]);
+    setIsLoadingMore(false);
+  }, [link.linkId, currentId, debouncedQ]);
 
   useEffect(() => {
     if (searchQuery.data) {
@@ -150,6 +151,7 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
   async function loadMore() {
     if (!nextCursor || isLoadingMore) return;
 
+    const identity = `${link.linkId}:${currentId}:${debouncedQ}`;
     setIsLoadingMore(true);
     const { data, error } = await eden.akasha
       .link({ linkId: link.linkId })
@@ -159,6 +161,8 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
         headers: { "nhd-link-token": link.token },
       })
       .finally(() => setIsLoadingMore(false));
+
+    if (identity !== `${link.linkId}:${currentId}:${debouncedQ}`) return;
 
     if (error || !data) {
       toast.error(t("drive.ui.search_unavailable"));
@@ -225,7 +229,7 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
                 <p className="mt-4 text-center text-xl">{t("drive.ui.search_no_results")}</p>
               </div>
             </div>
-          ) : isSearchPending || (isFetching && displayContents.length === 0) ? (
+          ) : isSearchPending ? (
             <AkashaSkeleton />
           ) : isFetched ? (
             <div className="flex h-full w-full flex-row items-center justify-center select-none">
@@ -241,6 +245,8 @@ export function ShareLinkContents(props: ShareLinkContentsProps) {
                 </p>
               </div>
             </div>
+          ) : isFetching && displayContents.length === 0 ? (
+            <AkashaSkeleton />
           ) : null}
         </ContextMenuProvider>
       </div>
