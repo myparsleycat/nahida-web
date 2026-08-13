@@ -1,4 +1,4 @@
-// import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -28,11 +28,15 @@ function RouteComponent() {
   const [reqPwd, setReqPwd] = useState(false);
   const [inPwd, setInPwd] = useState("");
   const [msg, setMsg] = useState(t("drive.link.required_password"));
-  // const [needToken, setNeedToken] = useState(false);
-  // const turnstileRef = useRef(null);
+  const [needToken, setNeedToken] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const busyRef = useRef(false);
   const [currentId, setCurrentId] = useState("");
   const [linkParent, setLinkParent] = useState<{ id: string; name: string } | null>(null);
-  // const tokenResolverRef = useRef<(token: string) => void | null>(null);
+  const tokenResolverRef = useRef<((token: string) => void) | null>(null);
+  const tokenRejectRef = useRef<((error: Error) => void) | null>(null);
 
   const link = useMemo(() => {
     return { linkId, token };
@@ -88,16 +92,28 @@ function RouteComponent() {
   });
 
   function cfReset() {
-    // @ts-ignore
-    turnstileRef.current?.reset?.();
+    turnstileRef.current?.reset();
+    setNeedToken(false);
+    tokenResolverRef.current = null;
+    tokenRejectRef.current = null;
   }
 
-  // function getTurnstileToken(): Promise<string> {
-  //   return new Promise((resolve) => {
-  //     tokenResolverRef.current = resolve;
-  //     setNeedToken(true);
-  //   });
-  // }
+  function getTurnstileToken(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      tokenResolverRef.current = resolve;
+      tokenRejectRef.current = reject;
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      setNeedToken(true);
+    });
+  }
+
+  function failTurnstile() {
+    toast.warning(t("toast.warning.failure_turnstile"));
+    tokenRejectRef.current?.(new Error("turnstile_failed"));
+    tokenRejectRef.current = null;
+    tokenResolverRef.current = null;
+    setNeedToken(false);
+  }
 
   function enterRoot(parentId: string) {
     setCurrentId(parentId);
@@ -111,6 +127,11 @@ function RouteComponent() {
   }
 
   async function initializeExplorer() {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setIsBusy(true);
+    setCanRetry(false);
+
     try {
       const cachedData = sessionStorage.getItem(`linkData-${linkId}`);
       if (cachedData) {
@@ -126,17 +147,36 @@ function RouteComponent() {
         }
       }
 
-      // const cftoken = await getTurnstileToken();
+      const requestAccess = (cftoken: string) =>
+        eden.akasha.link({ linkId }).post({
+          password: inPwd,
+          cftoken,
+        });
 
-      const { data, error } = await eden.akasha.link({ linkId }).post({
-        password: inPwd,
-        cftoken: "", // cftoken,
-      });
+      const postWithTurnstile = async () => requestAccess(await getTurnstileToken());
 
-      if (error) {
-        if (error.status === 429) {
+      let result = inPwd ? await postWithTurnstile() : await requestAccess("");
+
+      if (result.error?.value === "cftoken_required" && !inPwd) {
+        result = await postWithTurnstile();
+      }
+
+      while (
+        result.error?.value === "invalid_cftoken" ||
+        result.error?.value === "cftoken_required"
+      ) {
+        toast.warning(
+          result.error.value === "invalid_cftoken"
+            ? t("toast.warning.failure_turnstile")
+            : t("toast.warning.missing_cftoken"),
+        );
+        result = await postWithTurnstile();
+      }
+
+      if (result.error) {
+        if (result.error.status === 429) {
           const msg = t("toast.warning.retryAfter", {
-            sec: error.value.retryAfter,
+            sec: result.error.value.retryAfter,
           });
           toast.warning(t("toast.warning.too_many_requests"), {
             description: msg,
@@ -146,7 +186,7 @@ function RouteComponent() {
           return;
         }
 
-        switch (error.value) {
+        switch (result.error.value) {
           case "missing_password":
             setReqPwd(true);
             break;
@@ -159,16 +199,20 @@ function RouteComponent() {
             setErrMsg(t("drive.link.not_found"));
             break;
           default:
-            const text = error.value.toString();
+            const text = result.error.value.toString();
             toast.warning(text);
+            if (!inPwd) {
+              setErrMsg(text);
+              break;
+            }
             setMsg(text);
         }
         return;
       }
 
       setReqPwd(false);
-      const newToken = data.token;
-      const newParent = data.parent;
+      const newToken = result.data.token;
+      const newParent = result.data.parent;
 
       setToken(newToken);
       setLinkParent(newParent);
@@ -185,20 +229,33 @@ function RouteComponent() {
         }),
       );
     } catch (error) {
+      if (error instanceof Error && error.message === "turnstile_failed") {
+        if (!inPwd) setCanRetry(true);
+        return;
+      }
       const text = error instanceof Error ? error.message : String(error);
       setErrMsg(text);
       toast.error(text);
     } finally {
-      // cfReset();
+      busyRef.current = false;
+      setIsBusy(false);
+      cfReset();
       setFirstLoading(false);
     }
   }
 
   async function handlePasswordSubmit() {
+    if (busyRef.current) return;
     if (!inPwd) {
       toast.warning(t("toast.warning.pw_is_required"));
       return;
     }
+    await initializeExplorer();
+  }
+
+  async function handleOpenRetry() {
+    if (busyRef.current) return;
+    setFirstLoading(true);
     await initializeExplorer();
   }
 
@@ -217,6 +274,17 @@ function RouteComponent() {
           </Center>
         )}
 
+        {canRetry && !reqPwd && !errMsg && (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex w-100 flex-col gap-y-4">
+              <p>{t("toast.warning.failure_turnstile")}</p>
+              <Button disabled={isBusy} onClick={() => void handleOpenRetry()}>
+                {t("g.continue")}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {reqPwd && (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex w-100 flex-col gap-y-4">
@@ -229,6 +297,7 @@ function RouteComponent() {
                   )}
                   autoFocus
                   required
+                  disabled={isBusy || needToken}
                   value={inPwd}
                   onChange={(e) => setInPwd(e.target.value)}
                   onKeyDown={(e) => {
@@ -237,7 +306,9 @@ function RouteComponent() {
                     }
                   }}
                 />
-                <Button onClick={() => void handlePasswordSubmit()}>{t("g.continue")}</Button>
+                <Button disabled={isBusy || needToken} onClick={() => void handlePasswordSubmit()}>
+                  {t("g.continue")}
+                </Button>
               </div>
             </div>
           </div>
@@ -257,20 +328,11 @@ function RouteComponent() {
             />
           )}
         </div>
-
-        {/* <div className="border-t flex justify-center items-center h-[90px]">
-          <ins
-            className="adsbygoogle"
-            style={{ display: 'inline-block', width: 728, height: 88 }}
-            data-ad-client="ca-pub-2531929543941857"
-            data-ad-slot="4810314528"
-          ></ins>
-        </div> */}
       </div>
 
-      {/* <div>
+      <div>
         {needToken && (
-          <div className="fixed inset-0 bg-black/50 rounded-lg flex items-center justify-center z-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center rounded-lg bg-black/50">
             <div className="rounded-lg shadow-lg">
               <Turnstile
                 ref={turnstileRef}
@@ -279,14 +341,17 @@ function RouteComponent() {
                   if (tokenResolverRef.current) {
                     tokenResolverRef.current(token);
                     tokenResolverRef.current = null;
+                    tokenRejectRef.current = null;
                   }
                   setNeedToken(false);
                 }}
+                onExpire={() => turnstileRef.current?.reset()}
+                onError={() => failTurnstile()}
               />
             </div>
           </div>
         )}
-      </div> */}
+      </div>
     </>
   );
 }
