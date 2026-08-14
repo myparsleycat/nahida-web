@@ -1,3 +1,5 @@
+import { parseHttpBody } from "@/lib/cbor-response";
+
 import type { PersistedUploadIntent } from "./types";
 
 const DIRECT_UPLOAD_THRESHOLD = 80 * 1024 * 1024;
@@ -182,10 +184,17 @@ function sendXhr(
         };
         xhr.onload = () => {
             signal?.removeEventListener("abort", abort);
-            resolve(parseHttpResult(xhr.status, xhr.responseText));
+            resolve(
+                parseHttpBody(
+                    xhr.status,
+                    xhr.getResponseHeader("Content-Type"),
+                    new Uint8Array(xhr.response as ArrayBuffer),
+                ),
+            );
         };
         xhr.onerror = () => resolve({ status: 0, reason: "network_error" });
         xhr.onabort = () => resolve({ status: 0, reason: "aborted" });
+        xhr.responseType = "arraybuffer";
         xhr.withCredentials = true;
         xhr.open(method, url);
         xhr.send(body);
@@ -195,28 +204,17 @@ function sendXhr(
 async function request(url: string, init: RequestInit): Promise<HttpResult> {
     try {
         const response = await fetch(url, init);
-        return parseHttpResult(response.status, await response.text());
+        return parseHttpBody(
+            response.status,
+            response.headers.get("Content-Type"),
+            new Uint8Array(await response.arrayBuffer()),
+        );
     } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
             return { status: 0, reason: "aborted" };
         }
         return { status: 0, reason: "network_error" };
     }
-}
-
-function parseHttpResult(status: number, raw: string): HttpResult {
-    if (!raw) return { status };
-    try {
-        const value: unknown = JSON.parse(raw);
-        if (typeof value === "string") return { status, reason: value };
-        if (value && typeof value === "object") {
-            const payload = value as { status?: string; reason?: string; message?: string };
-            return { status, payload, reason: payload.reason || payload.message };
-        }
-    } catch {
-        return { status, reason: raw.slice(0, 200) };
-    }
-    return { status };
 }
 
 function isRetryable(result: HttpResult) {
