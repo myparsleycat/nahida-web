@@ -481,6 +481,10 @@ class AkashaClass {
 
         const totalSize = allFiles.reduce((sum, fileInfo) => sum + fileInfo.file.size, 0);
 
+        if (allFiles.length === 0 && allDirectories.length === 0) {
+            throw new Error("empty_upload");
+        }
+
         if (isNameConflict(items, processName)) {
             this.drag.setUploadDragging(false);
             const shouldMerge = await this.dialog.showDialog("conflictNameDialog");

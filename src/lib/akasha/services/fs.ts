@@ -24,6 +24,7 @@ export async function collectDirectoryStructure(
     entry: FileSystemDirectoryEntry,
     parentPath: string = "",
 ): Promise<{ path: string; name: string; parentPath: string }[]> {
+    if (isSystemFile(entry.name)) return [];
     const result: { path: string; name: string; parentPath: string }[] = [];
     const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;
 
@@ -44,12 +45,33 @@ export async function collectDirectoryStructure(
     return result.concat(...subDirs);
 }
 
+const SYSTEM_FILE_PATTERNS = [
+    /^\.DS_Store$/,
+    /^\._/,
+    /^\.AppleDouble$/,
+    /^\.Spotlight-V100$/,
+    /^\.Trashes$/,
+    /^\.fseventsd$/,
+    /^\.TemporaryItems$/,
+    /^\.apdisk$/,
+    /^__MACOSX$/,
+    /^Thumbs\.db$/i,
+    /^ehthumbs.*\.db$/i,
+    /^desktop\.ini$/i,
+    /^~$/,
+];
+
+export function isSystemFile(name: string) {
+    return SYSTEM_FILE_PATTERNS.some((pattern) => pattern.test(name));
+}
+
 export async function collectFiles(
     entry: FileSystemEntry,
     basePath: string = "",
     _additionalExt: string[] = [],
 ): Promise<FileInfoComponent[]> {
     if (entry.isFile) {
+        if (isSystemFile(entry.name)) return [];
         const fileEntry = entry as FileSystemFileEntry;
         return new Promise((resolve) => {
             fileEntry.file((file) => {
@@ -72,6 +94,7 @@ export async function collectFiles(
     }
 
     if (entry.isDirectory) {
+        if (isSystemFile(entry.name)) return [];
         const dirEntry = entry as FileSystemDirectoryEntry;
         const reader = dirEntry.createReader();
         const entries = await readAllEntries(reader);
