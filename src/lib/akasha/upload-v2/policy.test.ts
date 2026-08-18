@@ -12,12 +12,15 @@ import {
     applyUploadPlan,
     completeUploadIntentAttempt,
     createChunkIndexes,
+    getFinalUploadSessionStatus,
     getUploadRetryDecision,
     getUploadSessionActionAvailability,
     getIntentTargetUpdates,
     hasCompleteDirectoryMapping,
+    isPlanTerminal,
     prepareUploadCancellation,
     prepareUploadRetry,
+    summarizeUploadTargets,
 } from "./policy";
 
 const REQUEST_ID = "9db50716-3f2f-44c7-afc1-bf12957943f5";
@@ -205,6 +208,79 @@ describe("createChunkIndexes", () => {
         expect(createChunkIndexes(4)).toEqual([0, 1, 2, 3]);
         expect(() => createChunkIndexes(0)).toThrow("invalid_total_parts");
         expect(() => createChunkIndexes(1.5)).toThrow("invalid_total_parts");
+    });
+});
+
+describe("summarizeUploadTargets", () => {
+    it("splits success, excluded, failed, retryable, and open outcomes", () => {
+        expect(
+            summarizeUploadTargets([
+                { ...target("created"), status: "created" },
+                { ...target("exists"), status: "exists" },
+                { ...target("completed"), status: "completed" },
+                { ...target("denied"), status: "denied" },
+                { ...target("failed"), status: "failed" },
+                { ...target("cancelled"), status: "cancelled" },
+                { ...target("paused"), status: "paused" },
+                { ...target("uploading"), status: "uploading" },
+            ]),
+        ).toEqual({
+            completed: 3,
+            excluded: 1,
+            failed: 2,
+            retryable: 1,
+            open: 1,
+            total: 8,
+        });
+    });
+});
+
+describe("getFinalUploadSessionStatus", () => {
+    it("completes when remaining files were only denied by the server", () => {
+        expect(
+            getFinalUploadSessionStatus([
+                { ...target("completed"), status: "completed" },
+                { ...target("denied"), status: "denied" },
+            ]),
+        ).toBe("completed");
+        expect(getFinalUploadSessionStatus([{ ...target("denied"), status: "denied" }])).toBe(
+            "completed",
+        );
+    });
+
+    it("stays partial when a real failure remains beside excluded files", () => {
+        expect(
+            getFinalUploadSessionStatus([
+                { ...target("denied"), status: "denied" },
+                { ...target("failed"), status: "failed" },
+            ]),
+        ).toBe("partial");
+    });
+
+    it("treats cancelled leftovers as the same failure class as failed", () => {
+        expect(getFinalUploadSessionStatus([{ ...target("cancelled"), status: "cancelled" }])).toBe(
+            "partial",
+        );
+    });
+
+    it("pauses when a retryable target is still open", () => {
+        expect(
+            getFinalUploadSessionStatus([
+                { ...target("denied"), status: "denied" },
+                { ...target("paused"), status: "paused" },
+            ]),
+        ).toBe("paused");
+    });
+});
+
+describe("isPlanTerminal", () => {
+    it("treats success, excluded, and failed outcomes as terminal", () => {
+        expect(isPlanTerminal({ ...target("completed"), status: "completed" })).toBe(true);
+        expect(isPlanTerminal({ ...target("denied"), status: "denied" })).toBe(true);
+        expect(isPlanTerminal({ ...target("failed"), status: "failed" })).toBe(true);
+        expect(isPlanTerminal({ ...target("cancelled"), status: "cancelled" })).toBe(true);
+        expect(isPlanTerminal({ ...target("pending"), status: "pending" })).toBe(false);
+        expect(isPlanTerminal({ ...target("planning"), status: "planning" })).toBe(false);
     });
 });
 

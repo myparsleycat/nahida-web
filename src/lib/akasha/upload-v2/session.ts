@@ -28,8 +28,10 @@ import { planUploadSession } from "./planner";
 import {
     applyUploadPlan,
     completeUploadIntentAttempt,
+    getFinalUploadSessionStatus,
     getIntentTargetUpdates,
     hasCompleteDirectoryMapping,
+    isPlanTerminal,
     prepareUploadCancellation,
     prepareUploadRetry,
 } from "./policy";
@@ -490,16 +492,7 @@ async function setIntentTargets(
 }
 
 async function finalizeSession(snapshot: UploadSessionSnapshot) {
-    const succeeded = snapshot.targets.filter(isSuccessTarget).length;
-    const failed = snapshot.targets.length - succeeded;
-    const hasRetryable = snapshot.targets.some(
-        (target) => target.status === "pending" || target.status === "paused",
-    );
-    const status = hasRetryable
-        ? ("paused" as const)
-        : failed > 0
-          ? ("partial" as const)
-          : ("completed" as const);
+    const status = getFinalUploadSessionStatus(snapshot.targets);
     await saveUploadSession({ ...snapshot.session, status, updatedAt: Date.now() });
     if (status === "completed") clearUploadMemory(snapshot.session.requestId);
     await refreshSnapshot(snapshot.session.requestId);
@@ -548,14 +541,6 @@ function getUploadTabId() {
     const created = crypto.randomUUID();
     sessionStorage.setItem(TAB_ID_KEY, created);
     return created;
-}
-
-function isSuccessTarget(target: PersistedUploadTarget) {
-    return ["created", "exists", "completed"].includes(target.status);
-}
-
-function isPlanTerminal(target: PersistedUploadTarget) {
-    return isSuccessTarget(target) || target.status === "denied" || target.status === "failed";
 }
 
 async function setSessionStatus(session: PersistedUploadSession, status: UploadSessionStatus) {

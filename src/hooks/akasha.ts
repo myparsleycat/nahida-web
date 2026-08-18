@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { akasha, dialogStore, type Content } from "@/lib/akasha";
 import { GetFSEntries } from "@/lib/akasha/services/drive-upload";
 import { startUpload } from "@/lib/akasha/services/mod-drive/upload";
+import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
+import { summarizeUploadTargets } from "@/lib/akasha/upload-v2/policy";
 import { loadUploadSessionSnapshot } from "@/lib/akasha/upload-v2/repository";
 import { eden } from "@/lib/eden";
 import {
@@ -227,18 +229,16 @@ export function useHandler() {
                 });
 
                 const snapshot = await loadUploadSessionSnapshot(requestId);
-                const completed =
-                    snapshot?.targets.filter((target) =>
-                        ["created", "exists", "completed"].includes(target.status),
-                    ).length ?? 0;
-                const failed = (snapshot?.targets.length ?? 0) - completed;
-                if (failed > 0) {
-                    toast.warning(t("upload.transfer.status.partial"), {
-                        description: t("upload.transfer.summary.failed", { count: failed }),
-                    });
-                } else {
-                    toast.success(t("upload.transfer.status.completed"));
-                }
+                const summary = summarizeUploadTargets(snapshot?.targets ?? []);
+                const description = formatUploadTransferSummary(summary, t);
+                toast[summary.failed > 0 ? "warning" : "success"](
+                    t(
+                        summary.failed > 0
+                            ? "upload.transfer.status.partial"
+                            : "upload.transfer.status.completed",
+                    ),
+                    description ? { description } : undefined,
+                );
 
                 await queryClient.refetchQueries({
                     queryKey: ["akasha", "mod", "item", itemId],

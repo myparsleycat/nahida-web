@@ -6,7 +6,12 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/policy";
+import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
+import {
+  classifyUploadTarget,
+  getUploadSessionActionAvailability,
+  summarizeUploadTargets,
+} from "@/lib/akasha/upload-v2/policy";
 import { cn, formatSize } from "@/lib/utils";
 import { useModStore } from "@/stores/akasha-mod.store";
 import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
@@ -147,9 +152,8 @@ export function TransferDialog() {
     snapshots.find((snapshot) => ["partial", "failed", "paused"].includes(snapshot.session.status));
   const actions = upload && getUploadSessionActionAvailability(upload);
   const hasError = upload && ["partial", "failed", "paused"].includes(upload.session.status);
-  const completedTargets = upload?.targets.filter((target) =>
-    ["created", "exists", "completed"].includes(target.status),
-  );
+  const summary = upload ? summarizeUploadTargets(upload.targets) : null;
+  const outcome = summary ? formatUploadTransferSummary(summary, t) : "";
   const status = upload
     ? hasError
       ? "failed"
@@ -159,11 +163,14 @@ export function TransferDialog() {
           ? "hashing"
           : "transmitting"
     : transfer.status;
-  const totalItems = upload?.targets.length ?? transfer.totalItems;
-  const sentItems = completedTargets?.length ?? transfer.sentItems;
+  const totalItems = summary?.total ?? transfer.totalItems;
+  const sentItems = summary ? summary.completed + summary.excluded : transfer.sentItems;
   const totalBytes = upload?.session.totalBytes ?? transfer.totalBytes;
-  const sentBytes =
-    completedTargets?.reduce((sum, target) => sum + target.size, 0) ?? transfer.sentBytes;
+  const sentBytes = upload
+    ? upload.targets
+        .filter((target) => classifyUploadTarget(target.status) === "success")
+        .reduce((sum, target) => sum + target.size, 0)
+    : transfer.sentBytes;
   const progress = upload
     ? totalBytes
       ? Math.min((sentBytes / totalBytes) * 100, 100)
@@ -217,11 +224,12 @@ export function TransferDialog() {
               </small>
               <Progress value={progress} />
             </>
-          ) : status === "failed" && upload && actions ? (
+          ) : status === "failed" && upload && actions && summary ? (
             <>
               <p className="font-semibold">{t("upload.transfer.status.failed")}</p>
               <small className="text-muted-foreground">
-                {upload.session.name} · {sentItems}/{totalItems}
+                {upload.session.name} · {summary.completed}/{summary.total}
+                {outcome ? ` · ${outcome}` : ""}
               </small>
               <div className="flex gap-2">
                 {actions.canRetry && (

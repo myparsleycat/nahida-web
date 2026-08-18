@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { akasha, useAkashaStore, type CurrentProcess } from "@/lib/akasha";
-import { getUploadSessionActionAvailability } from "@/lib/akasha/upload-v2/policy";
+import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
+import {
+  getUploadSessionActionAvailability,
+  summarizeUploadTargets,
+} from "@/lib/akasha/upload-v2/policy";
 import { cn, formatSize } from "@/lib/utils";
 import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
@@ -50,14 +54,10 @@ function PersistentUploadSessions() {
   const { t } = useTranslation();
 
   return Object.values(uploads.snapshots).map((snapshot) => {
-    const completed = snapshot.targets.filter((target) =>
-      ["created", "exists", "completed"].includes(target.status),
-    ).length;
-    const failed = snapshot.targets.filter((target) =>
-      ["denied", "failed", "cancelled"].includes(target.status),
-    ).length;
-    const progress = snapshot.targets.length
-      ? (completed / snapshot.targets.length) * 100
+    const summary = summarizeUploadTargets(snapshot.targets);
+    const outcome = formatUploadTransferSummary(summary, t);
+    const progress = summary.total
+      ? ((summary.completed + summary.excluded) / summary.total) * 100
       : snapshot.session.status === "completed"
         ? 100
         : 0;
@@ -83,8 +83,8 @@ function PersistentUploadSessions() {
             <div className="min-w-0">
               <p className="truncate">{snapshot.session.name}</p>
               <small className="text-muted-foreground">
-                {formatSize(snapshot.session.totalBytes)} · {completed}/{snapshot.targets.length}
-                {failed > 0 ? ` · ${t("upload.transfer.summary.failed", { count: failed })}` : ""}
+                {formatSize(snapshot.session.totalBytes)} · {summary.completed}/{summary.total}
+                {outcome ? ` · ${outcome}` : ""}
               </small>
             </div>
           </div>

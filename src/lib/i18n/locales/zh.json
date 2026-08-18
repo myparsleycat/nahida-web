@@ -124,7 +124,7 @@
         "select_file": "重新选择原文件",
         "cancel": "取消传输"
       },
-      "summary": { "failed": "{{count}} 个失败" },
+      "summary": { "failed": "{{count}} 个失败", "excluded": "{{count}} 个排除" },
       "status": {
         "staging": "正在准备上传",
         "creating_directories": "正在创建目录",
@@ -137,7 +137,7 @@
         "exists": "已存在",
         "completed": "已完成",
         "partial": "部分失败",
-        "denied": "已拒绝",
+        "denied": "已排除",
         "failed": "失败",
         "paused": "等待重试",
         "cancelled": "已取消"

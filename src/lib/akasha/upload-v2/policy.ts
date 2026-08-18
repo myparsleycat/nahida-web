@@ -1,3 +1,5 @@
+import { countBy } from "es-toolkit";
+
 import type {
     PersistedUploadIntent,
     PersistedUploadTarget,
@@ -23,6 +25,38 @@ const ACTIVE_UPLOAD_SESSION_STATUSES = [
     "planning",
     "uploading",
 ] as const;
+
+export function classifyUploadTarget(status: PersistedUploadTarget["status"]) {
+    if (status === "created" || status === "exists" || status === "completed") return "success";
+    if (status === "denied") return "excluded";
+    if (status === "failed" || status === "cancelled") return "failed";
+    if (status === "pending" || status === "paused") return "retryable";
+    return "open";
+}
+
+export function summarizeUploadTargets(targets: PersistedUploadTarget[]) {
+    const counts = countBy(targets, (target) => classifyUploadTarget(target.status));
+    return {
+        completed: counts.success ?? 0,
+        excluded: counts.excluded ?? 0,
+        failed: counts.failed ?? 0,
+        retryable: counts.retryable ?? 0,
+        open: counts.open ?? 0,
+        total: targets.length,
+    };
+}
+
+export function getFinalUploadSessionStatus(targets: PersistedUploadTarget[]) {
+    const summary = summarizeUploadTargets(targets);
+    if (summary.retryable > 0) return "paused";
+    if (summary.failed > 0 || summary.open > 0) return "partial";
+    return "completed";
+}
+
+export function isPlanTerminal(target: PersistedUploadTarget) {
+    const outcome = classifyUploadTarget(target.status);
+    return outcome === "success" || outcome === "excluded" || outcome === "failed";
+}
 
 export function getUploadSessionActionAvailability(snapshot: UploadSessionSnapshot) {
     const status = snapshot.session.status;

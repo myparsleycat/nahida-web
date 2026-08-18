@@ -125,7 +125,7 @@
         "select_file": "Select source again",
         "cancel": "Cancel transfer"
       },
-      "summary": { "failed": "{{count}} failed" },
+      "summary": { "failed": "{{count}} failed", "excluded": "{{count}} excluded" },
       "status": {
         "staging": "Preparing upload",
         "creating_directories": "Creating directories",
@@ -138,7 +138,7 @@
         "exists": "Already exists",
         "completed": "Completed",
         "partial": "Partially completed",
-        "denied": "Denied",
+        "denied": "Excluded",
         "failed": "Failed",
         "paused": "Waiting to retry",
         "cancelled": "Cancelled"

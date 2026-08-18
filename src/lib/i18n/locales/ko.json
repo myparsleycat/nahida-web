@@ -126,7 +126,7 @@
         "select_file": "원본 다시 선택",
         "cancel": "전송 취소"
       },
-      "summary": { "failed": "실패 {{count}}개" },
+      "summary": { "failed": "실패 {{count}}개", "excluded": "제외 {{count}}개" },
       "status": {
         "staging": "업로드 준비 중",
         "creating_directories": "디렉토리 생성 중",
@@ -139,7 +139,7 @@
         "exists": "이미 존재함",
         "completed": "완료",
         "partial": "일부 실패",
-        "denied": "거부됨",
+        "denied": "제외",
         "failed": "실패",
         "paused": "재시도 대기",
         "cancelled": "취소됨"
