@@ -26,7 +26,9 @@ const ACTIVE_UPLOAD_SESSION_STATUSES = [
     "uploading",
 ] as const;
 
-export function classifyUploadTarget(status: PersistedUploadTarget["status"]) {
+export type UploadTargetOutcome = "success" | "excluded" | "failed" | "retryable" | "open";
+
+export function classifyUploadTarget(status: PersistedUploadTarget["status"]): UploadTargetOutcome {
     if (status === "created" || status === "exists" || status === "completed") return "success";
     if (status === "denied") return "excluded";
     if (status === "failed" || status === "cancelled") return "failed";

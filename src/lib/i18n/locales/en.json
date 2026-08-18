@@ -160,7 +160,10 @@
         "source_sha_mismatch": "The selected source has different contents.",
         "storage_unavailable": "Browser file storage is unavailable.",
         "storage_quota_exceeded": "There is not enough browser storage space.",
-        "page_unloaded": "The page was closed before the upload finished."
+        "page_unloaded": "The page was closed before the upload finished.",
+        "plan_result_missing": "This file was missing from the upload plan.",
+        "invalid_plan_response": "The upload plan response was invalid.",
+        "network_error": "The upload failed because of a network error."
       }
     }
   },

@@ -161,7 +161,10 @@
         "source_sha_mismatch": "다시 선택한 원본의 내용이 일치하지 않아요.",
         "storage_unavailable": "브라우저 파일 저장소를 사용할 수 없어요.",
         "storage_quota_exceeded": "브라우저 저장 공간이 부족해요.",
-        "page_unloaded": "업로드가 끝나기 전에 페이지가 닫혔어요."
+        "page_unloaded": "업로드가 끝나기 전에 페이지가 닫혔어요.",
+        "plan_result_missing": "업로드 계획에서 이 파일이 빠졌어요.",
+        "invalid_plan_response": "업로드 계획 응답이 올바르지 않아요.",
+        "network_error": "네트워크 오류로 업로드하지 못했어요."
       }
     }
   },

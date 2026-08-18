@@ -4,6 +4,9 @@ import { forwardRef, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { UploadSessionSnapshot } from "@/lib/akasha/upload-v2/types";
+
+import { UploadIssueList } from "@/components/akasha/upload-issue-list";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
@@ -143,20 +146,14 @@ export function TransferDialog() {
     (snapshot) => snapshot.session.kind === "mod",
   );
   const upload =
-    snapshots.find(
-      (snapshot) =>
-        !["completed", "partial", "failed", "paused", "cancelled"].includes(
-          snapshot.session.status,
-        ),
-    ) ??
-    snapshots.find((snapshot) => ["partial", "failed", "paused"].includes(snapshot.session.status));
+    snapshots.find((snapshot) => !TERMINAL_UPLOAD_STATUSES.includes(snapshot.session.status)) ??
+    snapshots.find(isModUploadResult);
   const actions = upload && getUploadSessionActionAvailability(upload);
-  const hasError = upload && ["partial", "failed", "paused"].includes(upload.session.status);
   const summary = upload ? summarizeUploadTargets(upload.targets) : null;
   const outcome = summary ? formatUploadTransferSummary(summary, t) : "";
   const status = upload
-    ? hasError
-      ? "failed"
+    ? isModUploadResult(upload)
+      ? "result"
       : upload.session.status === "staging"
         ? "collecting"
         : ["creating_directories", "hashing", "planning"].includes(upload.session.status)
@@ -224,13 +221,18 @@ export function TransferDialog() {
               </small>
               <Progress value={progress} />
             </>
-          ) : status === "failed" && upload && actions && summary ? (
+          ) : status === "result" && upload && actions && summary ? (
             <>
-              <p className="font-semibold">{t("upload.transfer.status.failed")}</p>
+              <p className="font-semibold">
+                {t(`upload.transfer.status.${upload.session.status}`, {
+                  defaultValue: upload.session.status,
+                })}
+              </p>
               <small className="text-muted-foreground">
                 {upload.session.name} · {summary.completed}/{summary.total}
                 {outcome ? ` · ${outcome}` : ""}
               </small>
+              <UploadIssueList targets={upload.targets} />
               <div className="flex gap-2">
                 {actions.canRetry && (
                   <Button
@@ -258,5 +260,14 @@ export function TransferDialog() {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const TERMINAL_UPLOAD_STATUSES = ["completed", "partial", "failed", "paused", "cancelled"];
+
+function isModUploadResult(snapshot: UploadSessionSnapshot) {
+  if (["partial", "failed", "paused"].includes(snapshot.session.status)) return true;
+  return (
+    snapshot.session.status === "completed" && summarizeUploadTargets(snapshot.targets).excluded > 0
   );
 }

@@ -9,3 +9,16 @@ export function formatUploadTransferSummary(
         .filter(Boolean)
         .join(" · ");
 }
+
+export function formatUploadIssueDetail(
+    issue: { outcome: "excluded" | "failed"; reason?: string },
+    t: (key: string, options?: { defaultValue: string }) => string,
+) {
+    const status = t(
+        issue.outcome === "excluded"
+            ? "upload.transfer.status.denied"
+            : "upload.transfer.status.failed",
+    );
+    if (!issue.reason) return status;
+    return `${status} · ${t(`upload.transfer.reason.${issue.reason}`, { defaultValue: issue.reason })}`;
+}

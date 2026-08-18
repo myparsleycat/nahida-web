@@ -10,6 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { UploadIssueList } from "@/components/akasha/upload-issue-list";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -129,6 +130,7 @@ function PersistentUploadSessions() {
           </div>
           <Progress value={progress} className="h-1" />
         </div>
+        <UploadIssueList targets={snapshot.targets} />
       </section>
     );
   });

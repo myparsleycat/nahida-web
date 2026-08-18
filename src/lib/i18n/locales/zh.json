@@ -159,7 +159,10 @@
         "source_sha_mismatch": "重新选择的原文件内容不一致。",
         "storage_unavailable": "浏览器文件存储不可用。",
         "storage_quota_exceeded": "浏览器存储空间不足。",
-        "page_unloaded": "页面在上传完成前已关闭。"
+        "page_unloaded": "页面在上传完成前已关闭。",
+        "plan_result_missing": "上传计划中缺少此文件。",
+        "invalid_plan_response": "上传计划响应无效。",
+        "network_error": "因网络错误未能上传。"
       }
     }
   },
