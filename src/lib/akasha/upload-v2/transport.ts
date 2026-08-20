@@ -61,7 +61,11 @@ export async function completeNteBundle(
             return { status: "completed" };
         }
         if (result.status === 202) {
-            await retryDelay(Math.min(attempt, 4), signal, 30_000);
+            await retryDelay(
+                Math.min(attempt, 4),
+                signal,
+                Math.min(30_000, COMPLETE_TIMEOUT_MS - (Date.now() - startedAt)),
+            );
             continue;
         }
         if (!isRetryable(result) || transportFailures >= RETRY_LIMIT) {
