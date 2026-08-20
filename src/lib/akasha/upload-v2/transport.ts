@@ -2,7 +2,12 @@ import { parseHttpBody } from "@/lib/cbor-response";
 
 import type { PersistedUploadIntent } from "./types";
 
-import { DIRECT_UPLOAD_THRESHOLD, logicalBytesForPackProgress, packUploadUrl } from "./pack";
+import {
+    DIRECT_UPLOAD_THRESHOLD,
+    logicalBytesForPackProgress,
+    packUploadUrl,
+    payloadBytesFromXhr,
+} from "./pack";
 
 const PART_SIZE = 25 * 1024 * 1024;
 const RETRY_LIMIT = 3;
@@ -275,7 +280,12 @@ function sendXhr(
         const abort = () => xhr.abort();
         signal?.addEventListener("abort", abort, { once: true });
         xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) callbacks.onProgress?.(event.loaded, totalBytes);
+            if (event.lengthComputable) {
+                callbacks.onProgress?.(
+                    payloadBytesFromXhr(event.loaded, event.total, totalBytes),
+                    totalBytes,
+                );
+            }
         };
         xhr.onload = () => {
             signal?.removeEventListener("abort", abort);
