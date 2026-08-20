@@ -169,7 +169,10 @@ export function TransferDialog() {
   const sentBytes = byteProgress?.uploadedBytes ?? transfer.sentBytes;
   const progress = byteProgress?.percent ?? transfer.progress;
   const isFinalizing =
-    status === "transmitting" && progress >= 100 && (byteProgress?.inflightBytes ?? 0) === 0;
+    status === "transmitting" &&
+    progress >= 100 &&
+    byteProgress !== null &&
+    byteProgress.inflightBytes === 0;
   const displayItems = Math.min(totalItems, 256);
   const displaySentItems =
     totalItems > 256 ? Math.floor((sentItems / totalItems) * 256) : sentItems;
