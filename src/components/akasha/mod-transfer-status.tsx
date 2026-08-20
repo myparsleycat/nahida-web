@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
 import {
-  classifyUploadTarget,
+  getUploadByteProgress,
   getUploadSessionActionAvailability,
   summarizeUploadTargets,
 } from "@/lib/akasha/upload-v2/policy";
@@ -163,18 +163,11 @@ export function TransferDialog() {
   const totalItems = summary?.total ?? transfer.totalItems;
   const sentItems = summary ? summary.completed + summary.excluded : transfer.sentItems;
   const totalBytes = upload?.session.totalBytes ?? transfer.totalBytes;
-  const sentBytes = upload
-    ? upload.targets
-        .filter((target) => classifyUploadTarget(target.status) === "success")
-        .reduce((sum, target) => sum + target.size, 0)
-    : transfer.sentBytes;
-  const progress = upload
-    ? totalBytes
-      ? Math.min((sentBytes / totalBytes) * 100, 100)
-      : upload.session.status === "completed"
-        ? 100
-        : 0
-    : transfer.progress;
+  const byteProgress = upload
+    ? getUploadByteProgress(upload, uploadSessions.inflightBytes[upload.session.requestId])
+    : null;
+  const sentBytes = byteProgress?.uploadedBytes ?? transfer.sentBytes;
+  const progress = byteProgress?.percent ?? transfer.progress;
   const displayItems = Math.min(totalItems, 256);
   const displaySentItems =
     totalItems > 256 ? Math.floor((sentItems / totalItems) * 256) : sentItems;

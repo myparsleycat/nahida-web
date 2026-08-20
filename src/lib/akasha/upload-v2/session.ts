@@ -1,4 +1,4 @@
-import { groupBy, orderBy } from "es-toolkit";
+import { groupBy, orderBy, throttle } from "es-toolkit";
 import pLimit from "p-limit";
 
 import type { DirectoryInfo, FileInfoComponent } from "@/lib/workers/akasha.worker";
@@ -453,33 +453,56 @@ async function uploadPackedIntents(
     members: PackMemberInput[],
     signal: AbortSignal,
 ) {
-    await Promise.all(
-        members.map(async (member) => {
-            await saveUploadIntent({ ...member.intent, state: "uploading", updatedAt: Date.now() });
-            await setIntentTargets(snapshot.session.requestId, member.intent.intentId, "uploading");
-        }),
+    const inflight = trackInflightBytes(
+        snapshot.session.requestId,
+        members.map((member) => member.intent.intentId).join(","),
     );
-    const results = await uploadPackBytes({ members, signal });
-    await Promise.all(
-        members.map(async (member, index) => {
-            const result = results[index] ?? {
-                status: "failed" as const,
-                reason: "pack_result_missing",
-            };
-            const stored = await getUploadIntent(member.intent.requestId, member.intent.intentId);
-            if (!stored) throw new Error("upload_intent_not_found");
-            await saveUploadIntent(completeUploadIntentAttempt(stored, result));
-            await setIntentTargets(
-                snapshot.session.requestId,
-                member.intent.intentId,
-                result.status === "completed" ? "completed" : result.status,
-                result.reason,
-            );
-            if (result.status === "completed") {
-                releaseIntentFiles(snapshot, member.intent.intentId);
-            }
-        }),
-    );
+    try {
+        await Promise.all(
+            members.map(async (member) => {
+                await saveUploadIntent({
+                    ...member.intent,
+                    state: "uploading",
+                    updatedAt: Date.now(),
+                });
+                await setIntentTargets(
+                    snapshot.session.requestId,
+                    member.intent.intentId,
+                    "uploading",
+                );
+            }),
+        );
+        const results = await uploadPackBytes({
+            members,
+            signal,
+            callbacks: { onProgress: (uploadedBytes) => inflight.report(uploadedBytes) },
+        });
+        await Promise.all(
+            members.map(async (member, index) => {
+                const result = results[index] ?? {
+                    status: "failed" as const,
+                    reason: "pack_result_missing",
+                };
+                const stored = await getUploadIntent(
+                    member.intent.requestId,
+                    member.intent.intentId,
+                );
+                if (!stored) throw new Error("upload_intent_not_found");
+                await saveUploadIntent(completeUploadIntentAttempt(stored, result));
+                await setIntentTargets(
+                    snapshot.session.requestId,
+                    member.intent.intentId,
+                    result.status === "completed" ? "completed" : result.status,
+                    result.reason,
+                );
+                if (result.status === "completed") {
+                    releaseIntentFiles(snapshot, member.intent.intentId);
+                }
+            }),
+        );
+    } finally {
+        inflight.finish();
+    }
 }
 
 async function uploadOneIntent(
@@ -492,51 +515,66 @@ async function uploadOneIntent(
     const source = sourceFiles.get(target.requestId)?.get(target.clientId);
     if (!source) throw new Error("source_missing");
     const prepared = await prepareIntentFile(original, source);
-    await saveUploadIntent({ ...prepared.intent, state: "uploading", updatedAt: Date.now() });
-    await setIntentTargets(snapshot.session.requestId, prepared.intent.intentId, "uploading");
-    const result = await uploadIntentBytes({
-        intent: prepared.intent,
-        file: prepared.file,
-        signal,
-        callbacks: {
-            onPartAcknowledged: async (index, totalParts) => {
-                const current = await loadRequiredSnapshot(prepared.intent.requestId);
-                const stored = current.intents.find(
-                    (item) => item.intentId === prepared.intent.intentId,
-                );
-                if (!stored) return;
-                await saveUploadIntent({
-                    ...stored,
-                    totalParts,
-                    acknowledgedParts: [...new Set([...stored.acknowledgedParts, index])],
-                    updatedAt: Date.now(),
-                });
+    const inflight = trackInflightBytes(snapshot.session.requestId, original.intentId);
+    try {
+        await saveUploadIntent({ ...prepared.intent, state: "uploading", updatedAt: Date.now() });
+        await setIntentTargets(snapshot.session.requestId, prepared.intent.intentId, "uploading");
+        const result = await uploadIntentBytes({
+            intent: prepared.intent,
+            file: prepared.file,
+            signal,
+            callbacks: {
+                onProgress: (uploaded, payloadTotal) => {
+                    inflight.report(
+                        payloadTotal > 0
+                            ? Math.min(
+                                  source.size,
+                                  Math.floor((source.size * uploaded) / payloadTotal),
+                              )
+                            : 0,
+                    );
+                },
+                onPartAcknowledged: async (index, totalParts) => {
+                    const current = await loadRequiredSnapshot(prepared.intent.requestId);
+                    const stored = current.intents.find(
+                        (item) => item.intentId === prepared.intent.intentId,
+                    );
+                    if (!stored) return;
+                    await saveUploadIntent({
+                        ...stored,
+                        totalParts,
+                        acknowledgedParts: [...new Set([...stored.acknowledgedParts, index])],
+                        updatedAt: Date.now(),
+                    });
+                },
+                onPartsReset: async () => {
+                    const stored = await getUploadIntent(
+                        prepared.intent.requestId,
+                        prepared.intent.intentId,
+                    );
+                    if (!stored) return;
+                    await saveUploadIntent({
+                        ...stored,
+                        acknowledgedParts: [],
+                        updatedAt: Date.now(),
+                    });
+                },
             },
-            onPartsReset: async () => {
-                const stored = await getUploadIntent(
-                    prepared.intent.requestId,
-                    prepared.intent.intentId,
-                );
-                if (!stored) return;
-                await saveUploadIntent({
-                    ...stored,
-                    acknowledgedParts: [],
-                    updatedAt: Date.now(),
-                });
-            },
-        },
-    });
-    const stored = await getUploadIntent(prepared.intent.requestId, prepared.intent.intentId);
-    if (!stored) throw new Error("upload_intent_not_found");
-    await saveUploadIntent(completeUploadIntentAttempt(stored, result));
-    await setIntentTargets(
-        snapshot.session.requestId,
-        prepared.intent.intentId,
-        result.status === "completed" ? "completed" : result.status,
-        result.reason,
-    );
-    if (result.status === "completed") {
-        releaseIntentFiles(snapshot, prepared.intent.intentId);
+        });
+        const stored = await getUploadIntent(prepared.intent.requestId, prepared.intent.intentId);
+        if (!stored) throw new Error("upload_intent_not_found");
+        await saveUploadIntent(completeUploadIntentAttempt(stored, result));
+        await setIntentTargets(
+            snapshot.session.requestId,
+            prepared.intent.intentId,
+            result.status === "completed" ? "completed" : result.status,
+            result.reason,
+        );
+        if (result.status === "completed") {
+            releaseIntentFiles(snapshot, prepared.intent.intentId);
+        }
+    } finally {
+        inflight.finish();
     }
 }
 
@@ -617,11 +655,25 @@ function releaseIntentFiles(snapshot: UploadSessionSnapshot, intentId: string) {
     encodedFiles.delete(encodedFileKey(snapshot.session.requestId, intentId));
 }
 
+function trackInflightBytes(requestId: string, jobKey: string) {
+    const report = throttle((bytes: number) => {
+        uploadSessionStore.getState().setInflightBytes(requestId, jobKey, bytes);
+    }, 100);
+    return {
+        report,
+        finish() {
+            report.cancel();
+            uploadSessionStore.getState().clearInflightJob(requestId, jobKey);
+        },
+    };
+}
+
 function clearUploadMemory(requestId: string) {
     sourceFiles.delete(requestId);
     [...encodedFiles.keys()]
         .filter((key) => key.startsWith(`${requestId}:`))
         .forEach((key) => encodedFiles.delete(key));
+    uploadSessionStore.getState().clearInflightRequest(requestId);
 }
 
 function encodedFileKey(requestId: string, intentId: string) {

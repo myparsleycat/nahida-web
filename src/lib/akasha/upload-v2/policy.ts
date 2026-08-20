@@ -48,6 +48,31 @@ export function summarizeUploadTargets(targets: PersistedUploadTarget[]) {
     };
 }
 
+export function getUploadByteProgress(
+    snapshot: Pick<UploadSessionSnapshot, "session" | "targets">,
+    inflightJobs?: Record<string, number>,
+) {
+    const committedBytes = snapshot.targets.reduce((sum, target) => {
+        const outcome = classifyUploadTarget(target.status);
+        if (outcome === "success" || outcome === "excluded") return sum + target.size;
+        return sum;
+    }, 0);
+    const inflightBytes = Object.values(inflightJobs ?? {}).reduce((sum, bytes) => sum + bytes, 0);
+    const uploadedBytes = snapshot.session.totalBytes
+        ? Math.min(committedBytes + inflightBytes, snapshot.session.totalBytes)
+        : committedBytes + inflightBytes;
+    return {
+        committedBytes,
+        inflightBytes,
+        uploadedBytes,
+        percent: snapshot.session.totalBytes
+            ? (uploadedBytes / snapshot.session.totalBytes) * 100
+            : snapshot.session.status === "completed"
+              ? 100
+              : 0,
+    };
+}
+
 export function getFinalUploadSessionStatus(targets: PersistedUploadTarget[]) {
     const summary = summarizeUploadTargets(targets);
     if (summary.retryable > 0) return "paused";

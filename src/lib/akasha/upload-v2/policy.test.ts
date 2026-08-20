@@ -13,6 +13,7 @@ import {
     completeUploadIntentAttempt,
     createChunkIndexes,
     getFinalUploadSessionStatus,
+    getUploadByteProgress,
     getUploadRetryDecision,
     getUploadSessionActionAvailability,
     getIntentTargetUpdates,
@@ -232,6 +233,61 @@ describe("summarizeUploadTargets", () => {
             open: 1,
             total: 8,
         });
+    });
+});
+
+describe("getUploadByteProgress", () => {
+    it("adds committed success and excluded bytes to inflight", () => {
+        expect(
+            getUploadByteProgress(
+                {
+                    session: { ...session("uploading"), totalBytes: 100 },
+                    targets: [
+                        { ...target("a"), status: "completed", size: 40 },
+                        { ...target("b"), status: "denied", size: 10 },
+                        { ...target("c"), status: "uploading", size: 50 },
+                    ],
+                },
+                { job: 25 },
+            ),
+        ).toEqual({
+            committedBytes: 50,
+            inflightBytes: 25,
+            uploadedBytes: 75,
+            percent: 75,
+        });
+    });
+
+    it("clamps progress at 100 when inflight overlaps committed bytes", () => {
+        expect(
+            getUploadByteProgress(
+                {
+                    session: { ...session("uploading"), totalBytes: 50 },
+                    targets: [{ ...target("a"), status: "completed", size: 40 }],
+                },
+                { job: 20 },
+            ),
+        ).toEqual({
+            committedBytes: 40,
+            inflightBytes: 20,
+            uploadedBytes: 50,
+            percent: 100,
+        });
+    });
+
+    it("treats an empty completed session as 100 percent", () => {
+        expect(
+            getUploadByteProgress({
+                session: { ...session("completed"), totalBytes: 0 },
+                targets: [],
+            }).percent,
+        ).toBe(100);
+        expect(
+            getUploadByteProgress({
+                session: { ...session("uploading"), totalBytes: 0 },
+                targets: [],
+            }).percent,
+        ).toBe(0);
     });
 });
 

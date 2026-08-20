@@ -50,6 +50,10 @@ export function packUploadUrl(intentUrl: string) {
     return packed;
 }
 
+export function payloadBytesFromXhr(loaded: number, xhrTotal: number, payloadBytes: number) {
+    return Math.max(0, Math.min(payloadBytes, loaded - Math.max(0, xhrTotal - payloadBytes)));
+}
+
 export function logicalBytesForPackProgress(
     members: Array<{ logicalSize: number; payloadBytes: number }>,
     uploadedPayload: number,

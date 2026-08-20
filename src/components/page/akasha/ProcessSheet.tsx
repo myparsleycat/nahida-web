@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { akasha, useAkashaStore, type CurrentProcess } from "@/lib/akasha";
 import { formatUploadTransferSummary } from "@/lib/akasha/upload-v2/format";
 import {
+  getUploadByteProgress,
   getUploadSessionActionAvailability,
   summarizeUploadTargets,
 } from "@/lib/akasha/upload-v2/policy";
@@ -57,11 +58,11 @@ function PersistentUploadSessions() {
   return Object.values(uploads.snapshots).map((snapshot) => {
     const summary = summarizeUploadTargets(snapshot.targets);
     const outcome = formatUploadTransferSummary(summary, t);
-    const progress = summary.total
-      ? ((summary.completed + summary.excluded) / summary.total) * 100
-      : snapshot.session.status === "completed"
-        ? 100
-        : 0;
+    const byteProgress = getUploadByteProgress(
+      snapshot,
+      uploads.inflightBytes[snapshot.session.requestId],
+    );
+    const progress = byteProgress.percent;
     const actions = getUploadSessionActionAvailability(snapshot);
     const runAction = (action: () => Promise<void>) =>
       action().catch((error) => {
@@ -84,7 +85,8 @@ function PersistentUploadSessions() {
             <div className="min-w-0">
               <p className="truncate">{snapshot.session.name}</p>
               <small className="text-muted-foreground">
-                {formatSize(snapshot.session.totalBytes)} · {summary.completed}/{summary.total}
+                {formatSize(byteProgress.uploadedBytes)} / {formatSize(snapshot.session.totalBytes)}{" "}
+                · {summary.completed}/{summary.total}
                 {outcome ? ` · ${outcome}` : ""}
               </small>
             </div>
