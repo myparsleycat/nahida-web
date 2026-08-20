@@ -168,6 +168,11 @@ export function TransferDialog() {
     : null;
   const sentBytes = byteProgress?.uploadedBytes ?? transfer.sentBytes;
   const progress = byteProgress?.percent ?? transfer.progress;
+  const isFinalizing =
+    status === "transmitting" &&
+    progress >= 100 &&
+    byteProgress !== null &&
+    byteProgress.inflightBytes === 0;
   const displayItems = Math.min(totalItems, 256);
   const displaySentItems =
     totalItems > 256 ? Math.floor((sentItems / totalItems) * 256) : sentItems;
@@ -195,8 +200,12 @@ export function TransferDialog() {
             </>
           ) : status === "transmitting" ? (
             <>
-              <p className="font-semibold">Transmitting...</p>
-              {displayItems > 0 && (
+              <p className="font-semibold">
+                {isFinalizing
+                  ? `${t("upload.transfer.status.finalizing")}...`
+                  : "Transmitting..."}
+              </p>
+              {displayItems > 0 && !isFinalizing && (
                 <div
                   className="grid h-64 w-64 gap-1 border p-1"
                   style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
@@ -210,7 +219,8 @@ export function TransferDialog() {
                 </div>
               )}
               <small>
-                {formatSize(sentBytes)} / {formatSize(totalBytes)} | {formatSize(transfer.speed)}/s
+                {formatSize(sentBytes)} / {formatSize(totalBytes)}
+                {!isFinalizing && ` | ${formatSize(transfer.speed)}/s`}
               </small>
               <Progress value={progress} />
             </>

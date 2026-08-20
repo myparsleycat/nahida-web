@@ -132,6 +132,7 @@
         "planning": "正在规划上传",
         "pending": "等待上传",
         "uploading": "上传中",
+        "finalizing": "收尾中",
         "staged": "等待验证 NTE 模组",
         "completing": "验证中",
         "created": "已创建",

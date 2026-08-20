@@ -62,6 +62,8 @@ function PersistentUploadSessions() {
       uploads.inflightBytes[snapshot.session.requestId],
     );
     const progress = byteProgress.percent;
+    const isFinalizing =
+      progress >= 100 && byteProgress.inflightBytes === 0 && snapshot.session.status === "uploading";
     const actions = getUploadSessionActionAvailability(snapshot);
     const runAction = (action: () => Promise<void>) =>
       action().catch((error) => {
@@ -123,9 +125,11 @@ function PersistentUploadSessions() {
         <div className="flex flex-col gap-1">
           <div className="flex justify-between gap-3 text-muted-foreground">
             <small>
-              {t(`upload.transfer.status.${snapshot.session.status}`, {
-                defaultValue: snapshot.session.status,
-              })}
+              {isFinalizing
+                ? t("upload.transfer.status.finalizing")
+                : t(`upload.transfer.status.${snapshot.session.status}`, {
+                    defaultValue: snapshot.session.status,
+                  })}
             </small>
             <small>{Math.round(progress)}%</small>
           </div>
@@ -215,13 +219,18 @@ export function ProcessSheet(props: ProcessSheetProps) {
                     <div className="flex shrink-0 flex-row gap-1">
                       <div className="inline-flex items-center gap-2 rounded-sm border border-transparent bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden">
                         <LoaderIcon className="animate-spin" width={12} height={12} />
-                        {getProgressMessage(upload.current)}
+                        {upload.current.status === "uploading" &&
+                        upload.current.totalBytes !== undefined &&
+                        upload.current.uploadedBytes >= upload.current.totalBytes
+                          ? t("upload.transfer.status.finalizing")
+                          : getProgressMessage(upload.current)}
                       </div>
                     </div>
                   </div>
 
                   {upload.current.status === "uploading" &&
-                    upload.current.totalBytes !== undefined && (
+                    upload.current.totalBytes !== undefined &&
+                    upload.current.uploadedBytes < upload.current.totalBytes && (
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span></span>
