@@ -62,7 +62,8 @@ function PersistentUploadSessions() {
       uploads.inflightBytes[snapshot.session.requestId],
     );
     const progress = byteProgress.percent;
-    const isFinalizing = progress >= 100 && snapshot.session.status === "uploading";
+    const isFinalizing =
+      progress >= 100 && byteProgress.inflightBytes === 0 && snapshot.session.status === "uploading";
     const actions = getUploadSessionActionAvailability(snapshot);
     const runAction = (action: () => Promise<void>) =>
       action().catch((error) => {
