@@ -133,6 +133,7 @@
         "planning": "Planning upload",
         "pending": "Pending",
         "uploading": "Uploading",
+        "finalizing": "Finalizing",
         "staged": "Waiting for NTE mod validation",
         "completing": "Verifying",
         "created": "Created",

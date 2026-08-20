@@ -134,6 +134,7 @@
         "planning": "업로드 계획 생성 중",
         "pending": "업로드 대기",
         "uploading": "업로드 중",
+        "finalizing": "마무리 중",
         "staged": "NTE 모드 검증 대기",
         "completing": "검증 중",
         "created": "생성됨",
