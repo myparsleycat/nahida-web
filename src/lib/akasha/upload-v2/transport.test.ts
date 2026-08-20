@@ -2,7 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { PersistedUploadIntent } from "./types";
 
-import { uploadIntentBytes, uploadPackBytes } from "./transport";
+import { completeNteBundle, uploadIntentBytes, uploadPackBytes } from "./transport";
+
+const intent = {
+    requestId: "request",
+    intentId: "intent",
+    url: "/upload",
+    token: "token",
+    sha256: "a".repeat(64),
+    state: "pending" as const,
+    acknowledgedParts: [],
+    attemptCount: 0,
+    updatedAt: 0,
+} satisfies PersistedUploadIntent;
 
 describe("uploadIntentBytes", () => {
     it("does not start a request when the page signal is already aborted", async () => {
@@ -11,21 +23,120 @@ describe("uploadIntentBytes", () => {
 
         await expect(
             uploadIntentBytes({
-                intent: {
-                    requestId: "request",
-                    intentId: "intent",
-                    url: "/upload",
-                    token: "token",
-                    sha256: "a".repeat(64),
-                    state: "pending",
-                    acknowledgedParts: [],
-                    attemptCount: 0,
-                    updatedAt: 0,
-                } satisfies PersistedUploadIntent,
+                intent,
                 file: new File(["content"], "file.bin"),
                 signal: controller.signal,
             }),
         ).resolves.toEqual({ status: "paused", reason: "aborted" });
+    });
+
+    it("accepts exactly 1 GiB and rejects one byte more without allocating the file", async () => {
+        const fetchMock = vi.fn(
+            async () =>
+                new Response(JSON.stringify({ status: "completed" }), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        const exact = {
+            size: 1024 ** 3,
+            slice: vi.fn(() => new Blob()),
+        } as unknown as File;
+        const oversized = { size: 1024 ** 3 + 1 } as File;
+
+        try {
+            await expect(uploadIntentBytes({ intent, file: exact })).resolves.toEqual({
+                status: "completed",
+            });
+            await expect(uploadIntentBytes({ intent, file: oversized })).resolves.toEqual({
+                status: "failed",
+                reason: "file_too_large",
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
+
+const nteBundle = {
+    id: "bundle",
+    memberClientIds: ["utoc", "ucas"],
+    completeUrl: "/complete",
+    abortUrl: "/abort",
+    token: "bundle-token",
+    state: "pending" as const,
+    updatedAt: 0,
+};
+
+describe("completeNteBundle", () => {
+    it("posts the bundle token and preserves an invalid NTE error code", async () => {
+        const fetchMock = vi.fn(
+            async (_url: string, _init: RequestInit) =>
+                new Response(JSON.stringify({ code: "invalid_nte_mod_file" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        try {
+            await expect(completeNteBundle(nteBundle)).resolves.toEqual({
+                status: "failed",
+                reason: "invalid_nte_mod_file",
+            });
+            expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+                JSON.stringify({ token: "bundle-token" }),
+            );
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("keeps polling 202 responses until the bundle completes", async () => {
+        vi.useFakeTimers();
+        let calls = 0;
+        const fetchMock = vi.fn(async () => {
+            calls++;
+            return new Response(JSON.stringify({ status: calls <= 5 ? "pending" : "completed" }), {
+                status: calls <= 5 ? 202 : 200,
+                headers: { "content-type": "application/json" },
+            });
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        try {
+            const pending = completeNteBundle(nteBundle);
+            await vi.runAllTimersAsync();
+            await expect(pending).resolves.toEqual({ status: "completed" });
+            expect(fetchMock).toHaveBeenCalledTimes(6);
+        } finally {
+            vi.useRealTimers();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("pauses after retryable transport failures exhaust RETRY_LIMIT", async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi.fn(
+            async () =>
+                new Response(JSON.stringify({ status: "error" }), {
+                    status: 500,
+                    headers: { "content-type": "application/json" },
+                }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        try {
+            const pending = completeNteBundle(nteBundle);
+            await vi.runAllTimersAsync();
+            await expect(pending).resolves.toEqual({ status: "paused", reason: "http_500" });
+            expect(fetchMock).toHaveBeenCalledTimes(4);
+        } finally {
+            vi.useRealTimers();
+            vi.unstubAllGlobals();
+        }
     });
 });
 

@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { UploadIssueList } from "@/components/akasha/upload-issue-list";
-import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,7 +21,7 @@ import {
   getUploadSessionActionAvailability,
   summarizeUploadTargets,
 } from "@/lib/akasha/upload-v2/policy";
-import { cn, formatSize } from "@/lib/utils";
+import { formatSize } from "@/lib/utils";
 import { useUploadSessionStore } from "@/stores/akasha-upload-session.store";
 
 import { sheetTriggerClass } from "./DriveLayout";
@@ -132,6 +131,13 @@ function PersistentUploadSessions() {
           </div>
           <Progress value={progress} className="h-1" />
         </div>
+        {(snapshot.session.errorCode || snapshot.session.reason) && (
+          <small className="text-destructive">
+            {t(`upload.transfer.reason.${snapshot.session.errorCode ?? snapshot.session.reason}`, {
+              defaultValue: snapshot.session.errorCode ?? snapshot.session.reason,
+            })}
+          </small>
+        )}
         <UploadIssueList targets={snapshot.targets} />
       </section>
     );

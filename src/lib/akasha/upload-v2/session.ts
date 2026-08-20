@@ -16,6 +16,7 @@ import {
 import type {
     PersistedUploadDirectory,
     PersistedUploadIntent,
+    PersistedNteBundle,
     PersistedUploadSession,
     PersistedUploadTarget,
     UploadKind,
@@ -55,7 +56,13 @@ import {
     saveUploadSession,
     saveUploadTargets,
 } from "./repository";
-import { uploadIntentBytes, uploadPackBytes, type PackMemberInput } from "./transport";
+import {
+    abortNteBundle,
+    completeNteBundle,
+    uploadIntentBytes,
+    uploadPackBytes,
+    type PackMemberInput,
+} from "./transport";
 
 const LEASE_MS = 60_000;
 const TAB_ID_KEY = "akasha-upload-tab-id";
@@ -182,7 +189,9 @@ export async function retryUploadSession(requestId: string) {
     await saveUploadSession({
         ...snapshot.session,
         status: "paused",
+        nteBundles: retry.nteBundles,
         reason: undefined,
+        errorCode: undefined,
         updatedAt: Date.now(),
     });
     await runUploadSession(requestId);
@@ -190,6 +199,8 @@ export async function retryUploadSession(requestId: string) {
 
 export async function dismissUploadSession(requestId: string) {
     activeUploadControllers.get(requestId)?.abort("upload_cancelled");
+    const snapshot = await loadUploadSessionSnapshot(requestId);
+    if (snapshot) await abortPersistedBundles(snapshot);
     clearUploadMemory(requestId);
     await deleteUploadSession(requestId);
     uploadSessionStore.getState().removeSnapshot(requestId);
@@ -219,10 +230,12 @@ async function runUploadSession(requestId: string) {
         try {
             let snapshot = await loadRequiredSnapshot(requestId);
             snapshot = await ensureDirectories(snapshot);
-            snapshot = await ensureHashes(snapshot);
+            snapshot = await ensureHashes(snapshot, controller.signal);
             snapshot = await ensurePlan(snapshot);
             controller.signal.throwIfAborted();
             await uploadPlannedIntents(snapshot, controller.signal);
+            controller.signal.throwIfAborted();
+            await finalizeNteBundles(await loadRequiredSnapshot(requestId), controller.signal);
             controller.signal.throwIfAborted();
             await finalizeSession(await loadRequiredSnapshot(requestId));
         } catch (error) {
@@ -240,6 +253,7 @@ async function runUploadSession(requestId: string) {
                     ...snapshot.session,
                     status: "failed",
                     reason: error instanceof Error ? error.message : "upload_failed",
+                    errorCode: toErrorCode(error),
                     updatedAt: Date.now(),
                 });
                 await refreshSnapshot(requestId);
@@ -330,7 +344,7 @@ async function createModDirectories(
     return directories.map((directory) => ({ ...directory, itemId: ids.get(directory.path) }));
 }
 
-async function ensureHashes(snapshot: UploadSessionSnapshot) {
+async function ensureHashes(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
     const unhashed = snapshot.targets.filter((target) => !target.sha256);
     if (unhashed.length === 0) return snapshot;
     const session = await setSessionStatus(snapshot.session, "hashing");
@@ -341,7 +355,7 @@ async function ensureHashes(snapshot: UploadSessionSnapshot) {
             return { FID: target.clientId, file: source };
         }),
     );
-    const hashes = await calculateHashesInParallel(files);
+    const hashes = await calculateHashesInParallel(files, undefined, signal);
     const targets = snapshot.targets.map((target) => ({
         ...target,
         sha256: target.sha256 || hashes.get(target.clientId),
@@ -371,16 +385,31 @@ async function ensurePlan(snapshot: UploadSessionSnapshot) {
             [...snapshot.intents, ...applied.intents].map((intent) => [intent.intentId, intent]),
         ).values(),
     ];
+    const nextSession = {
+        ...session,
+        nteBundles: [
+            ...new Map(
+                [...(session.nteBundles ?? []), ...applied.nteBundles].map((bundle) => [
+                    bundle.id,
+                    bundle,
+                ]),
+            ).values(),
+        ],
+        updatedAt: Date.now(),
+    };
+    await saveUploadSession(nextSession);
     await saveUploadTargets(targets);
     await saveUploadIntents(intents);
     await refreshSnapshot(session.requestId);
-    return { ...snapshot, session, targets, intents };
+    return { ...snapshot, session: nextSession, targets, intents };
 }
 
 async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
     const session = await setSessionStatus(snapshot.session, "uploading");
     snapshot = { ...snapshot, session };
-    const limit = pLimit(8);
+    const directLimit = pLimit(8);
+    const multipartLimit = pLimit(4);
+    const bundleControllers = new Map<string, AbortController>();
     const jobs: Array<Promise<void>> = [];
     const packed: PackMemberInput[] = [];
     const flushPacked = () => {
@@ -388,17 +417,18 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
         for (const group of groups) {
             if (group.kind === "single") {
                 jobs.push(
-                    limit(() =>
-                        uploadOneIntent(snapshot, group.member.intent, signal).catch(
-                            (error: unknown) =>
+                    directLimit(() =>
+                        uploadOneIntent(snapshot, group.member.intent, signal)
+                            .then(() => undefined)
+                            .catch((error: unknown) =>
                                 failUploadIntent(snapshot, group.member.intent, error),
-                        ),
+                            ),
                     ),
                 );
                 continue;
             }
             jobs.push(
-                limit(() =>
+                directLimit(() =>
                     uploadPackedIntents(snapshot, group.members, signal).catch(
                         async (error: unknown) => {
                             if (error instanceof DOMException && error.name === "AbortError") {
@@ -421,15 +451,49 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
         if (!target) continue;
         const source = sourceFiles.get(target.requestId)?.get(target.clientId);
         if (!source) {
-            jobs.push(limit(() => failUploadIntent(snapshot, intent, new Error("source_missing"))));
+            jobs.push(
+                directLimit(() => failUploadIntent(snapshot, intent, new Error("source_missing"))),
+            );
+            continue;
+        }
+        if (target.bundleId) {
+            const bundleController =
+                bundleControllers.get(target.bundleId) ?? new AbortController();
+            bundleControllers.set(target.bundleId, bundleController);
+            const bundleSignal = AbortSignal.any([signal, bundleController.signal]);
+            jobs.push(
+                (source.size >= DIRECT_UPLOAD_THRESHOLD ? multipartLimit : directLimit)(() =>
+                    uploadOneIntent(snapshot, intent, bundleSignal)
+                        .then((result) => {
+                            if (result.status === "failed") {
+                                bundleController.abort(result.reason ?? "upload_failed");
+                            }
+                        })
+                        .catch(async (error: unknown) => {
+                            if (signal.aborted) return;
+                            if (!bundleController.signal.aborted) {
+                                bundleController.abort(
+                                    error instanceof Error ? error.message : "upload_failed",
+                                );
+                                await failUploadIntent(snapshot, intent, error);
+                                return;
+                            }
+                            await failUploadIntent(
+                                snapshot,
+                                intent,
+                                new Error("nte_bundle_incomplete"),
+                            );
+                        }),
+                ),
+            );
             continue;
         }
         if (source.size >= DIRECT_UPLOAD_THRESHOLD) {
             jobs.push(
-                limit(() =>
-                    uploadOneIntent(snapshot, intent, signal).catch((error: unknown) =>
-                        failUploadIntent(snapshot, intent, error),
-                    ),
+                multipartLimit(() =>
+                    uploadOneIntent(snapshot, intent, signal)
+                        .then(() => undefined)
+                        .catch((error: unknown) => failUploadIntent(snapshot, intent, error)),
                 ),
             );
             continue;
@@ -511,7 +575,7 @@ async function uploadOneIntent(
     signal: AbortSignal,
 ) {
     const target = snapshot.targets.find((item) => item.intentId === original.intentId);
-    if (!target) return;
+    if (!target) throw new Error("upload_target_not_found");
     const source = sourceFiles.get(target.requestId)?.get(target.clientId);
     if (!source) throw new Error("source_missing");
     const prepared = await prepareIntentFile(original, source);
@@ -567,12 +631,17 @@ async function uploadOneIntent(
         await setIntentTargets(
             snapshot.session.requestId,
             prepared.intent.intentId,
-            result.status === "completed" ? "completed" : result.status,
+            result.status === "completed"
+                ? target.bundleId
+                    ? "staged"
+                    : "completed"
+                : result.status,
             result.reason,
         );
-        if (result.status === "completed") {
+        if (result.status === "completed" && !target.bundleId) {
             releaseIntentFiles(snapshot, prepared.intent.intentId);
         }
+        return result;
     } finally {
         inflight.finish();
     }
@@ -623,9 +692,139 @@ async function setIntentTargets(
     await refreshSnapshot(requestId);
 }
 
+async function finalizeNteBundles(snapshot: UploadSessionSnapshot, signal: AbortSignal) {
+    for (const bundle of snapshot.session.nteBundles ?? []) {
+        if (["completed", "cancelled"].includes(bundle.state)) continue;
+        signal.throwIfAborted();
+        const current = await loadRequiredSnapshot(snapshot.session.requestId);
+        const stored = current.session.nteBundles?.find((item) => item.id === bundle.id);
+        if (!stored) continue;
+        const members = current.targets.filter((target) => target.bundleId === stored.id);
+        const failedReasons = members
+            .filter((target) => target.status === "failed")
+            .map((target) => target.reason)
+            .filter((reason): reason is string => Boolean(reason));
+        const reason =
+            failedReasons.find(
+                (failed) => failed !== "nte_bundle_incomplete" && failed !== "Aborted",
+            ) ??
+            failedReasons[0] ??
+            (members.length === stored.memberClientIds.length
+                ? undefined
+                : "invalid_plan_response");
+        if (reason) {
+            await failNteBundle(current, stored, reason);
+            continue;
+        }
+        if (members.some((target) => target.status !== "staged")) continue;
+
+        await saveUploadTargets(
+            members.map((target) => ({
+                ...target,
+                status: "completing" as const,
+                updatedAt: Date.now(),
+            })),
+        );
+        await setNteBundleState(current.session, stored.id, "completing");
+        await refreshSnapshot(current.session.requestId);
+        const result = await completeNteBundle(stored, signal);
+        if (result.status === "completed") {
+            await saveUploadTargets(
+                members.map((target) => ({
+                    ...target,
+                    status: "completed" as const,
+                    reason: undefined,
+                    updatedAt: Date.now(),
+                })),
+            );
+            await setNteBundleState(current.session, stored.id, "completed");
+            releaseBundleFiles(current, stored.id);
+            await refreshSnapshot(current.session.requestId);
+            continue;
+        }
+        if (result.status === "failed") {
+            await failNteBundle(current, stored, result.reason ?? "invalid_nte_mod_file");
+            continue;
+        }
+        await saveUploadTargets(
+            members.map((target) => ({
+                ...target,
+                status: "staged" as const,
+                reason: result.reason,
+                updatedAt: Date.now(),
+            })),
+        );
+        await setNteBundleState(current.session, stored.id, "paused", result.reason);
+        await refreshSnapshot(current.session.requestId);
+    }
+}
+
+async function failNteBundle(
+    snapshot: UploadSessionSnapshot,
+    bundle: PersistedNteBundle,
+    reason: string,
+) {
+    const cleanupFailed = await abortNteBundle(bundle).then(
+        () => false,
+        () => true,
+    );
+    const members = snapshot.targets.filter((target) => target.bundleId === bundle.id);
+    await saveUploadTargets(
+        members.map((target) => ({
+            ...target,
+            status: "failed" as const,
+            reason,
+            updatedAt: Date.now(),
+        })),
+    );
+    await setNteBundleState(snapshot.session, bundle.id, "failed", reason, {
+        errorCode: cleanupFailed ? "bundle_cleanup_failed" : reason,
+        reason: cleanupFailed ? "bundle_cleanup_failed" : reason,
+    });
+    releaseBundleFiles(snapshot, bundle.id);
+    await refreshSnapshot(snapshot.session.requestId);
+}
+
+async function setNteBundleState(
+    session: PersistedUploadSession,
+    bundleId: string,
+    state: PersistedNteBundle["state"],
+    reason?: string,
+    sessionError?: Pick<PersistedUploadSession, "errorCode" | "reason">,
+) {
+    const current = (await loadUploadSessionSnapshot(session.requestId))?.session ?? session;
+    await saveUploadSession({
+        ...current,
+        ...sessionError,
+        nteBundles: current.nteBundles?.map((bundle) =>
+            bundle.id === bundleId ? { ...bundle, state, reason, updatedAt: Date.now() } : bundle,
+        ),
+        updatedAt: Date.now(),
+    });
+}
+
+async function abortPersistedBundles(snapshot: UploadSessionSnapshot) {
+    const bundles = (snapshot.session.nteBundles ?? []).filter(
+        (bundle) => !["completed", "cancelled"].includes(bundle.state),
+    );
+    if (bundles.length === 0) return false;
+    return (await Promise.allSettled(bundles.map((bundle) => abortNteBundle(bundle)))).some(
+        (result) => result.status === "rejected",
+    );
+}
+
 async function finalizeSession(snapshot: UploadSessionSnapshot) {
     const status = getFinalUploadSessionStatus(snapshot.targets);
-    await saveUploadSession({ ...snapshot.session, status, updatedAt: Date.now() });
+    const terminalError = snapshot.targets.find(
+        (target) => target.status === "failed" && target.reason,
+    )?.reason;
+    await saveUploadSession({
+        ...snapshot.session,
+        status,
+        reason: terminalError ?? snapshot.session.reason,
+        errorCode: terminalError ?? snapshot.session.errorCode,
+        updatedAt: Date.now(),
+    });
     if (status === "completed") clearUploadMemory(snapshot.session.requestId);
     await refreshSnapshot(snapshot.session.requestId);
     await queryClient.invalidateQueries({
@@ -637,9 +836,14 @@ async function finalizeSession(snapshot: UploadSessionSnapshot) {
 }
 
 async function cancelPersistedUploadSession(snapshot: UploadSessionSnapshot) {
+    const cleanupFailed = await abortPersistedBundles(snapshot);
     const cancelled = prepareUploadCancellation(snapshot);
     await Promise.all([
-        saveUploadSession(cancelled.session),
+        saveUploadSession({
+            ...cancelled.session,
+            errorCode: cleanupFailed ? "bundle_cleanup_failed" : cancelled.session.errorCode,
+            reason: cleanupFailed ? "bundle_cleanup_failed" : cancelled.session.reason,
+        }),
         saveUploadTargets(cancelled.targets),
         saveUploadIntents(cancelled.intents),
     ]);
@@ -653,6 +857,18 @@ function releaseIntentFiles(snapshot: UploadSessionSnapshot, intentId: string) {
         .filter((target) => target.intentId === intentId)
         .forEach((target) => sources?.delete(target.clientId));
     encodedFiles.delete(encodedFileKey(snapshot.session.requestId, intentId));
+}
+
+function releaseBundleFiles(snapshot: UploadSessionSnapshot, bundleId: string) {
+    const sources = sourceFiles.get(snapshot.session.requestId);
+    snapshot.targets
+        .filter((target) => target.bundleId === bundleId)
+        .forEach((target) => {
+            sources?.delete(target.clientId);
+            if (target.intentId) {
+                encodedFiles.delete(encodedFileKey(snapshot.session.requestId, target.intentId));
+            }
+        });
 }
 
 function trackInflightBytes(requestId: string, jobKey: string) {
@@ -724,4 +940,9 @@ function toErrorMessage(value: unknown) {
     if (typeof value === "string") return value;
     if (value && typeof value === "object" && "message" in value) return String(value.message);
     return "upload_request_failed";
+}
+
+function toErrorCode(error: unknown) {
+    if (error instanceof Error && error.message) return error.message;
+    return "upload_failed";
 }

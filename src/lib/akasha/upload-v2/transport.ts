@@ -1,6 +1,6 @@
 import { parseHttpBody } from "@/lib/cbor-response";
 
-import type { PersistedUploadIntent } from "./types";
+import type { PersistedNteBundle, PersistedUploadIntent } from "./types";
 
 import {
     DIRECT_UPLOAD_THRESHOLD,
@@ -10,6 +10,8 @@ import {
 } from "./pack";
 
 const PART_SIZE = 25 * 1024 * 1024;
+const MAX_MULTIPART_PARTS = 64;
+const MAX_UPLOAD_FILE_SIZE = 1024 ** 3;
 const RETRY_LIMIT = 3;
 const COMPLETE_TIMEOUT_MS = 15 * 60 * 1000;
 
@@ -36,8 +38,64 @@ interface HttpResult {
     reason?: string;
     payload?: {
         status?: string;
+        code?: string;
         results?: Array<{ intentId: string; status: string; reason?: string }>;
     };
+}
+
+export async function completeNteBundle(
+    bundle: PersistedNteBundle,
+    signal?: AbortSignal,
+): Promise<IntentTransportResult> {
+    const startedAt = Date.now();
+    let transportFailures = 0;
+    for (let attempt = 0; Date.now() - startedAt < COMPLETE_TIMEOUT_MS; attempt++) {
+        const result = await request(bundle.completeUrl, {
+            method: "POST",
+            body: JSON.stringify({ token: bundle.token }),
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            signal,
+        });
+        if (result.status >= 200 && result.status < 300 && result.status !== 202) {
+            return { status: "completed" };
+        }
+        if (result.status === 202) {
+            await retryDelay(
+                Math.min(attempt, 4),
+                signal,
+                Math.min(30_000, COMPLETE_TIMEOUT_MS - (Date.now() - startedAt)),
+            );
+            continue;
+        }
+        if (!isRetryable(result) || transportFailures >= RETRY_LIMIT) {
+            return {
+                status: isRetryable(result) ? "paused" : "failed",
+                reason: result.payload?.code ?? result.reason ?? `http_${result.status}`,
+            };
+        }
+        transportFailures++;
+        await retryDelay(Math.min(attempt, 4), signal, 30_000);
+    }
+    return { status: "paused", reason: "complete_timeout" };
+}
+
+export async function abortNteBundle(bundle: PersistedNteBundle, signal?: AbortSignal) {
+    for (let attempt = 0; attempt <= RETRY_LIMIT; attempt++) {
+        const result = await request(bundle.abortUrl, {
+            method: "POST",
+            body: JSON.stringify({ token: bundle.token }),
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            signal,
+        });
+        if (result.status >= 200 && result.status < 300) return result.payload?.status;
+        if (!isRetryable(result) || attempt === RETRY_LIMIT) {
+            throw new Error(result.payload?.code ?? result.reason ?? "bundle_cleanup_failed");
+        }
+        await retryDelay(attempt, signal);
+    }
+    throw new Error("bundle_cleanup_failed");
 }
 
 export async function uploadIntentBytes({
@@ -177,6 +235,9 @@ async function uploadParts(
     signal?: AbortSignal,
 ): Promise<IntentTransportResult> {
     const totalParts = Math.ceil(file.size / PART_SIZE);
+    if (file.size > MAX_UPLOAD_FILE_SIZE || totalParts > MAX_MULTIPART_PARTS) {
+        return { status: "failed" as const, reason: "file_too_large" };
+    }
     const acknowledged = new Set(intent.acknowledgedParts);
     const sendMissingParts = async () => {
         for (let index = 0; index < totalParts; index++) {

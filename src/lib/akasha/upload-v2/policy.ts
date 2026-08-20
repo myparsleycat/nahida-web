@@ -32,7 +32,7 @@ export function classifyUploadTarget(status: PersistedUploadTarget["status"]): U
     if (status === "created" || status === "exists" || status === "completed") return "success";
     if (status === "denied") return "excluded";
     if (status === "failed" || status === "cancelled") return "failed";
-    if (status === "pending" || status === "paused") return "retryable";
+    if (status === "pending" || status === "paused" || status === "staged") return "retryable";
     return "open";
 }
 
@@ -88,24 +88,44 @@ export function isPlanTerminal(target: PersistedUploadTarget) {
 export function getUploadSessionActionAvailability(snapshot: UploadSessionSnapshot) {
     const status = snapshot.session.status;
     const isActive = (ACTIVE_UPLOAD_SESSION_STATUSES as readonly string[]).includes(status);
-    const hasRetryableTargets = snapshot.targets.some((target) =>
-        ["pending", "paused", "failed"].includes(target.status),
+    const hasRetryableTargets = snapshot.targets.some(
+        (target) =>
+            ["pending", "paused", "staged"].includes(target.status) ||
+            (target.status === "failed" && !isNonRetryableUploadReason(target.reason)),
     );
 
     return {
         // pending targets are normal during an active upload — only offer retry once the
         // session has stopped in a recovery state (failed / paused / partial).
-        canRetry: !isActive && (status === "failed" || hasRetryableTargets),
+        canRetry:
+            !isActive &&
+            (hasRetryableTargets ||
+                (status === "failed" &&
+                    !isNonRetryableUploadReason(
+                        snapshot.session.errorCode ?? snapshot.session.reason,
+                    ))),
         canCancel: isActive || status === "failed" || status === "paused",
         canDismiss: ["completed", "partial", "cancelled"].includes(status),
     };
 }
 
 export function prepareUploadRetry(snapshot: UploadSessionSnapshot, now = Date.now()) {
+    const retryableBundleIds = new Set(
+        snapshot.targets.flatMap((target) =>
+            target.bundleId &&
+            target.status === "failed" &&
+            !isNonRetryableUploadReason(target.reason)
+                ? [target.bundleId]
+                : [],
+        ),
+    );
+    const shouldRetry = (target: PersistedUploadTarget) =>
+        (target.status === "failed" && !isNonRetryableUploadReason(target.reason)) ||
+        (target.bundleId ? retryableBundleIds.has(target.bundleId) : false);
     const staleIntentIds = [
         ...new Set(
             snapshot.targets.flatMap((target) =>
-                target.status === "failed" && target.intentId ? [target.intentId] : [],
+                shouldRetry(target) && target.intentId ? [target.intentId] : [],
             ),
         ),
     ];
@@ -115,7 +135,7 @@ export function prepareUploadRetry(snapshot: UploadSessionSnapshot, now = Date.n
         staleIntentIds,
         intents: snapshot.intents.filter((intent) => !staleIntentIdSet.has(intent.intentId)),
         targets: snapshot.targets.map((target) => {
-            if (target.status !== "failed") return target;
+            if (!shouldRetry(target)) return target;
             const retryTarget = {
                 ...target,
                 status: "planning" as const,
@@ -126,6 +146,11 @@ export function prepareUploadRetry(snapshot: UploadSessionSnapshot, now = Date.n
             delete retryTarget.itemId;
             return retryTarget;
         }),
+        nteBundles: snapshot.session.nteBundles?.map((bundle) =>
+            retryableBundleIds.has(bundle.id)
+                ? { ...bundle, state: "pending" as const, reason: undefined, updatedAt: now }
+                : bundle,
+        ),
     };
 }
 
@@ -143,6 +168,11 @@ export function prepareUploadCancellation(snapshot: UploadSessionSnapshot, now =
             ...snapshot.session,
             status: "cancelled" as const,
             reason: "page_unloaded",
+            nteBundles: snapshot.session.nteBundles?.map((bundle) =>
+                bundle.state === "completed"
+                    ? bundle
+                    : { ...bundle, state: "cancelled" as const, updatedAt: now },
+            ),
             updatedAt: now,
         },
         targets: snapshot.targets.map((target) =>
@@ -213,6 +243,8 @@ export function applyUploadPlan({
         planItems.set(item.clientId, item);
     }
 
+    const bundles = new Map((response.nteBundles ?? []).map((bundle) => [bundle.id, bundle]));
+    const uploadedIntentIds = new Set(response.uploads.map((upload) => upload.intentId));
     const updatedTargets = targets.map((target) => {
         const item = planItems.get(target.clientId);
         if (!item) {
@@ -233,12 +265,42 @@ export function applyUploadPlan({
             };
         }
 
+        if (
+            item.bundleId &&
+            (!bundles.get(item.bundleId)?.memberClientIds.includes(item.clientId) ||
+                item.status === "denied" ||
+                item.status === "error")
+        ) {
+            return {
+                ...target,
+                status: "failed" as const,
+                reason: item.reason ?? "invalid_plan_response",
+                bundleId: item.bundleId,
+                updatedAt: now,
+            };
+        }
+
+        const status =
+            item.bundleId &&
+            (item.status === "created" ||
+                item.status === "exists" ||
+                (item.status === "pending" &&
+                    item.intentId &&
+                    !uploadedIntentIds.has(item.intentId)))
+                ? ("staged" as const)
+                : item.status === "denied" && isNonRetryableUploadReason(item.reason)
+                  ? ("failed" as const)
+                  : item.status === "error"
+                    ? ("failed" as const)
+                    : item.status;
+
         return {
             ...target,
-            status: item.status === "error" ? ("failed" as const) : item.status,
+            status,
             reason: item.reason,
             itemId: item.itemId,
             intentId: item.intentId,
+            bundleId: item.bundleId,
             updatedAt: now,
         };
     });
@@ -275,7 +337,28 @@ export function applyUploadPlan({
         ];
     });
 
-    return { targets: updatedTargets, intents: uploadIntents };
+    return {
+        targets: updatedTargets,
+        intents: uploadIntents,
+        nteBundles: [...bundles.values()].map((bundle) => ({
+            id: bundle.id,
+            memberClientIds: bundle.memberClientIds,
+            completeUrl: bundle.completeUrl,
+            abortUrl: bundle.abortUrl,
+            token: bundle.form.token,
+            state: "pending" as const,
+            updatedAt: now,
+        })),
+    };
+}
+
+export function isNonRetryableUploadReason(reason?: string) {
+    return (
+        reason === "invalid_nte_mod_file" ||
+        reason === "nte_client_upgrade_required" ||
+        reason === "nte_bundle_too_large" ||
+        reason === "file_too_large"
+    );
 }
 
 export function getUploadRetryDecision({

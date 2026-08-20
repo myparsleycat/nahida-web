@@ -133,6 +133,7 @@
         "planning": "Planning upload",
         "pending": "Pending",
         "uploading": "Uploading",
+        "staged": "Waiting for NTE mod validation",
         "completing": "Verifying",
         "created": "Created",
         "exists": "Already exists",
@@ -163,6 +164,11 @@
         "page_unloaded": "The page was closed before the upload finished.",
         "plan_result_missing": "This file was missing from the upload plan.",
         "invalid_plan_response": "The upload plan response was invalid.",
+        "invalid_nte_mod_file": "This is not a valid NTE mod file.",
+        "nte_client_upgrade_required": "Refresh the web app before uploading NTE mods.",
+        "nte_bundle_incomplete": "The NTE mod files have not finished uploading.",
+        "nte_bundle_too_large": "This NTE mod has too many files to upload as one group.",
+        "bundle_cleanup_failed": "The temporary files for the failed NTE mod could not be removed.",
         "network_error": "The upload failed because of a network error."
       }
     }

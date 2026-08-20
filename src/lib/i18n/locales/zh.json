@@ -132,6 +132,7 @@
         "planning": "正在规划上传",
         "pending": "等待上传",
         "uploading": "上传中",
+        "staged": "等待验证 NTE 模组",
         "completing": "验证中",
         "created": "已创建",
         "exists": "已存在",
@@ -162,6 +163,11 @@
         "page_unloaded": "页面在上传完成前已关闭。",
         "plan_result_missing": "上传计划中缺少此文件。",
         "invalid_plan_response": "上传计划响应无效。",
+        "invalid_nte_mod_file": "这不是有效的 NTE 模组文件。",
+        "nte_client_upgrade_required": "上传 NTE 模组前请刷新网页应用。",
+        "nte_bundle_incomplete": "NTE 模组文件尚未上传完成。",
+        "nte_bundle_too_large": "此 NTE 模组文件过多，无法作为一组上传。",
+        "bundle_cleanup_failed": "无法清理失败的 NTE 模组临时文件。",
         "network_error": "因网络错误未能上传。"
       }
     }

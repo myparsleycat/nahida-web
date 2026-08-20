@@ -80,6 +80,56 @@ function snapshot(
 }
 
 describe("applyUploadPlan", () => {
+    it("stages uploaded and deduplicated NTE members until bundle completion", () => {
+        const result = applyUploadPlan({
+            response: {
+                requestId: REQUEST_ID,
+                items: [
+                    {
+                        clientId: "utoc",
+                        status: "pending",
+                        intentId: "upload-utoc",
+                        bundleId: "bundle",
+                    },
+                    {
+                        clientId: "ucas",
+                        status: "pending",
+                        intentId: "dedup-ucas",
+                        bundleId: "bundle",
+                    },
+                ],
+                uploads: [
+                    {
+                        intentId: "upload-utoc",
+                        url: "/upload-utoc",
+                        method: "POST",
+                        form: { token: "token", sha256: "a".repeat(64) },
+                    },
+                ],
+                nteBundles: [
+                    {
+                        id: "bundle",
+                        memberClientIds: ["utoc", "ucas"],
+                        completeUrl: "/complete",
+                        abortUrl: "/abort",
+                        form: { token: "bundle-token" },
+                    },
+                ],
+            },
+            targets: [target("utoc"), target("ucas")],
+            now: NOW,
+        });
+
+        expect(result.targets).toEqual([
+            expect.objectContaining({ clientId: "utoc", status: "pending", bundleId: "bundle" }),
+            expect.objectContaining({ clientId: "ucas", status: "staged", bundleId: "bundle" }),
+        ]);
+        expect(result.intents.map((item) => item.intentId)).toEqual(["upload-utoc"]);
+        expect(result.nteBundles).toEqual([
+            expect.objectContaining({ id: "bundle", state: "pending", token: "bundle-token" }),
+        ]);
+    });
+
     it("maps every server status by stable clientId and preserves its reason", () => {
         const response: UploadPlanResponse = {
             requestId: REQUEST_ID,
@@ -173,6 +223,28 @@ describe("applyUploadPlan", () => {
             expect.objectContaining({ status: "failed", reason: "invalid_plan_response" }),
         ]);
     });
+
+    it("treats an invalid NTE plan denial as a terminal failure", () => {
+        const result = applyUploadPlan({
+            response: {
+                requestId: REQUEST_ID,
+                items: [
+                    {
+                        clientId: "invalid",
+                        status: "denied",
+                        reason: "invalid_nte_mod_file",
+                    },
+                ],
+                uploads: [],
+            },
+            targets: [target("invalid")],
+            now: NOW,
+        });
+
+        expect(result.targets).toEqual([
+            expect.objectContaining({ status: "failed", reason: "invalid_nte_mod_file" }),
+        ]);
+    });
 });
 
 describe("getUploadRetryDecision", () => {
@@ -223,15 +295,16 @@ describe("summarizeUploadTargets", () => {
                 { ...target("failed"), status: "failed" },
                 { ...target("cancelled"), status: "cancelled" },
                 { ...target("paused"), status: "paused" },
+                { ...target("staged"), status: "staged" },
                 { ...target("uploading"), status: "uploading" },
             ]),
         ).toEqual({
             completed: 3,
             excluded: 1,
             failed: 2,
-            retryable: 1,
+            retryable: 2,
             open: 1,
-            total: 8,
+            total: 9,
         });
     });
 });
@@ -378,6 +451,45 @@ describe("upload session recovery policy", () => {
         expect(result.targets[0]).not.toHaveProperty("reason");
         expect(result.targets[0]).not.toHaveProperty("intentId");
         expect(result.targets[0]).not.toHaveProperty("itemId");
+    });
+
+    it("does not retry oversized files or NTE groups", () => {
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("partial", [
+                    { ...target("big"), status: "failed", reason: "file_too_large" },
+                ]),
+            ),
+        ).toMatchObject({ canRetry: false });
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("partial", [
+                    { ...target("huge"), status: "failed", reason: "nte_bundle_too_large" },
+                ]),
+            ),
+        ).toMatchObject({ canRetry: false });
+    });
+
+    it("does not retry an invalid NTE bundle", () => {
+        const invalid = {
+            ...target("invalid"),
+            status: "failed" as const,
+            reason: "invalid_nte_mod_file",
+            intentId: "invalid-intent",
+            bundleId: "bundle",
+        };
+        const result = prepareUploadRetry(
+            snapshot("partial", [invalid], [intent("invalid-intent")]),
+            NOW,
+        );
+
+        expect(result.targets).toEqual([invalid]);
+        expect(result.staleIntentIds).toEqual([]);
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("partial", [invalid], [intent("invalid-intent")]),
+            ),
+        ).toMatchObject({ canRetry: false });
     });
 
     it("exposes retry, cancel, and dismiss actions for each recovery state", () => {
