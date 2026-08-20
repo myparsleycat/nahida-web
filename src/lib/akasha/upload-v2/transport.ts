@@ -126,13 +126,17 @@ export async function uploadPackBytes({
         );
         if (result.status >= 200 && result.status < 300 && result.status !== 202) {
             const packResults = result.payload?.results;
-            if (!packResults || packResults.length !== members.length) {
+            if (!packResults) {
                 return members.map(() => ({
                     status: "failed" as const,
                     reason: result.reason || "pack_result_missing",
                 }));
             }
-            return packResults.map((packResult) => {
+            return members.map((member) => {
+                const packResult = packResultForIntent(packResults, member.intent.intentId);
+                if (!packResult) {
+                    return { status: "failed" as const, reason: "pack_result_missing" };
+                }
                 if (packResult.status === "completed") return { status: "completed" as const };
                 if (packResult.status === "pending") {
                     return { status: "paused" as const, reason: "pending" };
@@ -149,7 +153,14 @@ export async function uploadPackBytes({
                 reason: result.reason || `http_${result.status}`,
             }));
         }
-        await retryDelay(attempt, signal);
+        try {
+            await retryDelay(attempt, signal);
+        } catch (error: unknown) {
+            if (error instanceof DOMException && error.name === "AbortError") {
+                return members.map(() => ({ status: "paused" as const, reason: "aborted" }));
+            }
+            throw error;
+        }
     }
     return members.map(() => ({ status: "paused" as const, reason: "retry_exhausted" }));
 }
@@ -299,6 +310,15 @@ async function request(url: string, init: RequestInit): Promise<HttpResult> {
         }
         return { status: 0, reason: "network_error" };
     }
+}
+
+function packResultForIntent(
+    results: Array<{ intentId: string; status: string; reason?: string }>,
+    intentId: string,
+) {
+    const matches = results.filter((result) => result.intentId === intentId);
+    if (matches.length !== 1) return undefined;
+    return matches[0];
 }
 
 function isRetryable(result: HttpResult) {

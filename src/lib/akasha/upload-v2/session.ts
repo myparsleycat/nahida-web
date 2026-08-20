@@ -399,6 +399,9 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
                 limit(() =>
                     uploadPackedIntents(snapshot, group.members, signal).catch(
                         async (error: unknown) => {
+                            if (error instanceof DOMException && error.name === "AbortError") {
+                                return;
+                            }
                             await Promise.all(
                                 group.members.map((member) =>
                                     failUploadIntent(snapshot, member.intent, error),
@@ -415,7 +418,10 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
         const target = snapshot.targets.find((item) => item.intentId === intent.intentId);
         if (!target) continue;
         const source = sourceFiles.get(target.requestId)?.get(target.clientId);
-        if (!source) throw new Error("source_missing");
+        if (!source) {
+            jobs.push(limit(() => failUploadIntent(snapshot, intent, new Error("source_missing"))));
+            continue;
+        }
         if (source.size >= DIRECT_UPLOAD_THRESHOLD) {
             jobs.push(
                 limit(() =>
