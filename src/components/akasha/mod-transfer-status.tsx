@@ -225,6 +225,14 @@ export function TransferDialog() {
                 {upload.session.name} · {summary.completed}/{summary.total}
                 {outcome ? ` · ${outcome}` : ""}
               </small>
+              {(upload.session.errorCode || upload.session.reason) && (
+                <small className="text-destructive">
+                  {t(
+                    `upload.transfer.reason.${upload.session.errorCode ?? upload.session.reason}`,
+                    { defaultValue: upload.session.errorCode ?? upload.session.reason },
+                  )}
+                </small>
+              )}
               <UploadIssueList targets={upload.targets} />
               <div className="flex gap-2">
                 {actions.canRetry && (

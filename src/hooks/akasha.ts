@@ -61,13 +61,13 @@ export function useContentMenu(sortedContents?: Content[]) {
         }
     };
 
-    const handleItemRightClick = async (e: React.MouseEvent, item: Content) => {
+    const handleItemRightClick = async (_e: React.MouseEvent, item: Content) => {
         if (selection.selectedItems.length <= 1) {
             selection.setSelectedItems([item]);
         }
     };
 
-    const handleClickOutside = (e: React.MouseEvent) => {
+    const handleClickOutside = (_e: React.MouseEvent) => {
         selection.setSelectedItems([]);
         selection.setLastSelectedIdx(null);
     };
@@ -122,7 +122,7 @@ export function useAkashaMutation() {
     const moveMutation = useMutation({
         mutationKey: ["akasha", "drive", "move"],
         mutationFn: async (props: moveMutationProps) => {
-            const { items, targetId, current } = props;
+            const { items, targetId } = props;
             const uuids = items.map((item) => item.id);
 
             const { data, error } = await eden.akasha.content.move_many.post({
@@ -130,7 +130,7 @@ export function useAkashaMutation() {
                 target: targetId,
             });
             if (error) {
-                throw new Error(error.value.toString());
+                throw new Error(toErrorText(error.value));
             }
 
             return data;
@@ -148,7 +148,7 @@ export function useAkashaMutation() {
                 target: targetId,
             });
             if (error) {
-                throw new Error(error.value.toString());
+                throw new Error(toErrorText(error.value));
             }
 
             return data;
@@ -159,6 +159,12 @@ export function useAkashaMutation() {
         moveMutation,
         copyMutation,
     };
+}
+
+function toErrorText(value: unknown) {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object" && "message" in value) return String(value.message);
+    return "request_failed";
 }
 
 export function useHandler() {
@@ -229,13 +235,21 @@ export function useHandler() {
                 });
 
                 const snapshot = await loadUploadSessionSnapshot(requestId);
+                if (snapshot?.session.status === "failed") {
+                    throw new Error(
+                        snapshot.session.errorCode ??
+                            snapshot.session.reason ??
+                            "upload_plan_failed",
+                    );
+                }
                 const summary = summarizeUploadTargets(snapshot?.targets ?? []);
                 const description = formatUploadTransferSummary(summary, t);
-                toast[summary.failed > 0 ? "warning" : "success"](
+                const successful = snapshot?.session.status === "completed";
+                toast[successful ? "success" : "warning"](
                     t(
-                        summary.failed > 0
-                            ? "upload.transfer.status.partial"
-                            : "upload.transfer.status.completed",
+                        successful
+                            ? "upload.transfer.status.completed"
+                            : `upload.transfer.status.${snapshot?.session.status ?? "partial"}`,
                     ),
                     description ? { description } : undefined,
                 );
@@ -246,9 +260,10 @@ export function useHandler() {
             } else {
                 throw new Error("invalid props");
             }
-        } catch (err: any) {
-            if (err.message === "invalid_sig") {
-                toast.error(err.message, {
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "upload_failed";
+            if (message === "invalid_sig") {
+                toast.error(message, {
                     description: "권한이 없거나 키가 누락되었습니다",
                 });
                 return;
@@ -256,7 +271,7 @@ export function useHandler() {
 
             console.error("Error during upload process:", err);
             toast.error("Failed to process upload", {
-                description: err.message,
+                description: t(`upload.transfer.reason.${message}`, { defaultValue: message }),
             });
         } finally {
             drag.setUploadDragging(false);

@@ -6,6 +6,7 @@ export type UploadTargetStatus =
     | "planning"
     | "pending"
     | "uploading"
+    | "staged"
     | "completing"
     | "created"
     | "exists"
@@ -47,6 +48,18 @@ export interface PersistedUploadTarget {
     reason?: string;
     itemId?: string;
     intentId?: string;
+    bundleId?: string;
+    updatedAt: number;
+}
+
+export interface PersistedNteBundle {
+    id: string;
+    memberClientIds: string[];
+    completeUrl: string;
+    abortUrl: string;
+    token: string;
+    state: "pending" | "completing" | "completed" | "paused" | "failed" | "cancelled";
+    reason?: string;
     updatedAt: number;
 }
 
@@ -79,7 +92,9 @@ export interface PersistedUploadSession {
     createdAt: number;
     updatedAt: number;
     directories: PersistedUploadDirectory[];
+    nteBundles?: PersistedNteBundle[];
     reason?: string;
+    errorCode?: string;
     leaseOwner?: string;
     leaseUntil?: number;
 }
@@ -90,6 +105,7 @@ export interface UploadPlanItem {
     reason?: string;
     itemId?: string;
     intentId?: string;
+    bundleId?: string;
 }
 
 export interface UploadPlanEntry {
@@ -106,6 +122,15 @@ export interface UploadPlanResponse {
     requestId: string;
     items: UploadPlanItem[];
     uploads: UploadPlanEntry[];
+    nteBundles?: UploadPlanNteBundle[];
+}
+
+export interface UploadPlanNteBundle {
+    id: string;
+    memberClientIds: string[];
+    completeUrl: string;
+    abortUrl: string;
+    form: { token: string };
 }
 
 export interface UploadSessionSnapshot {

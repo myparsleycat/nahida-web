@@ -41,6 +41,8 @@ vi.mock("@/lib/workers/upload/hash-pool", () => ({
 vi.mock("./planner", () => ({ planUploadSession: vi.fn() }));
 
 vi.mock("./transport", () => ({
+    abortNteBundle: vi.fn(),
+    completeNteBundle: vi.fn(),
     uploadIntentBytes: mocks.uploadIntentBytes,
     uploadPackBytes: mocks.uploadPackBytes,
 }));

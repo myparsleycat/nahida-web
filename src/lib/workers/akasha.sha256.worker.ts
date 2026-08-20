@@ -1,62 +1,36 @@
-const calculateSHA256WebCrypto = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+import { createSHA256 } from "hash-wasm";
 
-        const cleanup = () => {
-            reader.onload = null;
-            reader.onerror = null;
-            reader.onabort = null;
-        };
+const HASH_SLICE_SIZE = 4 * 1024 * 1024;
 
-        reader.onload = async (e) => {
-            try {
-                const arrayBuffer = e.target?.result as ArrayBuffer;
-                const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-                cleanup();
-                resolve(hashHex);
-            } catch (error) {
-                cleanup();
-                reject(error);
-            }
-        };
+interface HashWorkerRequest {
+    files: Array<{ FID: string; file: File }>;
+}
 
-        reader.onerror = () => {
-            const error = reader.error;
-            cleanup();
-            reject(error);
-        };
-
-        reader.onabort = () => {
-            cleanup();
-            reject(new Error("FileReader aborted"));
-        };
-
-        reader.readAsArrayBuffer(file);
-    });
-};
-
-self.onmessage = async (e) => {
-    const { files } = e.data;
-    const hashes: [string, string][] = [];
+self.onmessage = async (event: MessageEvent<HashWorkerRequest>) => {
+    const hashes: Array<[string, string]> = [];
 
     try {
-        for (let i = 0; i < files.length; i++) {
-            const { FID, file } = files[i];
-            const hash = await calculateSHA256WebCrypto(file);
-            hashes.push([FID, hash]);
-
-            files[i].file = null;
-            files[i] = null;
-
-            self.postMessage({ type: "progress", fileIndex: i });
+        for (const [fileIndex, entry] of event.data.files.entries()) {
+            const hasher = await createSHA256();
+            hasher.init();
+            for (let offset = 0; offset < entry.file.size; offset += HASH_SLICE_SIZE) {
+                hasher.update(
+                    new Uint8Array(
+                        await entry.file
+                            .slice(offset, Math.min(offset + HASH_SLICE_SIZE, entry.file.size))
+                            .arrayBuffer(),
+                    ),
+                );
+            }
+            hashes.push([entry.FID, hasher.digest("hex")]);
+            self.postMessage({ type: "progress", fileIndex });
         }
 
         self.postMessage({ type: "complete", hashes });
-    } catch (error: any) {
-        self.postMessage({ type: "error", error: error.message });
-    } finally {
-        files.length = 0;
+    } catch (error) {
+        self.postMessage({
+            type: "error",
+            error: error instanceof Error ? error.message : "hash_failed",
+        });
     }
 };

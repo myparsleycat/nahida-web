@@ -1,77 +1,74 @@
-import sha256worker from "@/lib/workers/akasha.sha256.worker?worker";
+import Sha256Worker from "@/lib/workers/akasha.sha256.worker?worker";
 
-export const createSha256WorkerPool = (size: number): Worker[] => {
-    const workers: Worker[] = [];
-    for (let i = 0; i < size; i++) {
-        const worker = new sha256worker();
-        workers.push(worker);
-    }
-    return workers;
-};
-
-export const cleanupSha256Workers = (workers: Worker[]) => {
-    workers.forEach((worker) => {
-        worker.onmessage = null;
-        worker.onerror = null;
-        worker.terminate();
-    });
-};
+const MAX_HASH_WORKERS = 2;
 
 interface HashableFile {
     FID: string;
     file: File;
 }
 
+type HashWorkerMessage =
+    | { type: "progress"; fileIndex: number }
+    | { type: "complete"; hashes: Array<[string, string]> }
+    | { type: "error"; error: string };
+
+export function createSha256WorkerPool(size: number) {
+    return Array.from({ length: Math.min(size, MAX_HASH_WORKERS) }, () => new Sha256Worker());
+}
+
+export function cleanupSha256Workers(workers: Worker[]) {
+    workers.forEach((worker) => {
+        worker.onmessage = null;
+        worker.onerror = null;
+        worker.terminate();
+    });
+}
+
 export async function calculateHashesInParallel(
     files: HashableFile[],
     onProgress?: (completed: number, total: number) => void,
-): Promise<Map<string, string>> {
-    const maxAvailableCores = navigator.hardwareConcurrency || 4;
-    const optimalWorkerCount = Math.min(files.length, maxAvailableCores);
-
-    const workers = createSha256WorkerPool(optimalWorkerCount);
+    signal?: AbortSignal,
+) {
+    if (files.length === 0) return new Map<string, string>();
+    signal?.throwIfAborted();
+    const workers = createSha256WorkerPool(
+        Math.min(files.length, navigator.hardwareConcurrency || MAX_HASH_WORKERS),
+    );
+    const chunks = Array.from({ length: workers.length }, () => [] as HashableFile[]);
+    files.forEach((file, index) => chunks[index % workers.length].push(file));
     let completedFiles = 0;
-
-    const chunks: HashableFile[][] = Array.from({ length: optimalWorkerCount }, () => []);
-    files.forEach((file, index) => {
-        const workerIndex = index % optimalWorkerCount;
-        chunks[workerIndex].push(file);
-    });
 
     try {
         const results = await Promise.all(
-            chunks.map((chunk, workerIndex) => {
-                return new Promise<Map<string, string>>((resolve, reject) => {
-                    const worker = workers[workerIndex];
+            chunks.map(
+                (workerFiles, workerIndex) =>
+                    new Promise<Map<string, string>>((resolve, reject) => {
+                        const worker = workers[workerIndex];
+                        const abort = () => reject(new DOMException("Aborted", "AbortError"));
+                        signal?.addEventListener("abort", abort, { once: true });
+                        const finish = <T>(callback: (value: T) => void, value: T) => {
+                            signal?.removeEventListener("abort", abort);
+                            callback(value);
+                        };
 
-                    worker.onmessage = (e) => {
-                        if (e.data.type === "progress") {
-                            completedFiles++;
-                            onProgress?.(completedFiles, files.length);
-                        } else if (e.data.type === "complete") {
-                            resolve(new Map(e.data.hashes));
-                        } else if (e.data.type === "error") {
-                            reject(e.data.error);
-                        }
-                    };
-
-                    worker.onerror = (error) => {
-                        reject(error);
-                    };
-
-                    worker.postMessage({ files: chunk });
-                });
-            }),
+                        worker.onmessage = (event: MessageEvent<HashWorkerMessage>) => {
+                            if (event.data.type === "progress") {
+                                completedFiles++;
+                                onProgress?.(completedFiles, files.length);
+                                return;
+                            }
+                            if (event.data.type === "complete") {
+                                finish(resolve, new Map(event.data.hashes));
+                                return;
+                            }
+                            finish(reject, new Error(event.data.error));
+                        };
+                        worker.onerror = (error) => finish(reject, error);
+                        worker.postMessage({ files: workerFiles });
+                    }),
+            ),
         );
-
-        const combinedHashes = new Map<string, string>();
-        results.forEach((result) => {
-            result.forEach((hash, fid) => {
-                combinedHashes.set(fid, hash);
-            });
-        });
-
-        return combinedHashes;
+        return new Map(results.flatMap((result) => [...result]));
     } finally {
         cleanupSha256Workers(workers);
     }

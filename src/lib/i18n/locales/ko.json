@@ -134,6 +134,7 @@
         "planning": "업로드 계획 생성 중",
         "pending": "업로드 대기",
         "uploading": "업로드 중",
+        "staged": "NTE 모드 검증 대기",
         "completing": "검증 중",
         "created": "생성됨",
         "exists": "이미 존재함",
@@ -164,6 +165,10 @@
         "page_unloaded": "업로드가 끝나기 전에 페이지가 닫혔어요.",
         "plan_result_missing": "업로드 계획에서 이 파일이 빠졌어요.",
         "invalid_plan_response": "업로드 계획 응답이 올바르지 않아요.",
+        "invalid_nte_mod_file": "유효한 NTE 모드 파일이 아닙니다.",
+        "nte_client_upgrade_required": "NTE 모드를 업로드하려면 웹 앱을 새로고침해야 해요.",
+        "nte_bundle_incomplete": "NTE 모드 파일 업로드가 아직 완료되지 않았어요.",
+        "bundle_cleanup_failed": "실패한 NTE 모드의 임시 파일을 정리하지 못했어요.",
         "network_error": "네트워크 오류로 업로드하지 못했어요."
       }
     }
