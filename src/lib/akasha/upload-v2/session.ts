@@ -24,6 +24,12 @@ import type {
 } from "./types";
 
 import { isPreviewFile } from "../services/drive-common";
+import {
+    DIRECT_UPLOAD_THRESHOLD,
+    PACK_MAX_FILES,
+    PACK_PAYLOAD_BUDGET,
+    partitionPackedUploads,
+} from "./pack";
 import { planUploadSession } from "./planner";
 import {
     applyUploadPlan,
@@ -47,7 +53,7 @@ import {
     saveUploadSession,
     saveUploadTargets,
 } from "./repository";
-import { uploadIntentBytes } from "./transport";
+import { uploadIntentBytes, uploadPackBytes, type PackMemberInput } from "./transport";
 
 const LEASE_MS = 60_000;
 const TAB_ID_KEY = "akasha-upload-tab-id";
@@ -373,16 +379,98 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
     const session = await setSessionStatus(snapshot.session, "uploading");
     snapshot = { ...snapshot, session };
     const limit = pLimit(8);
-    await Promise.all(
-        snapshot.intents
-            .filter((intent) => intent.state !== "completed")
-            .map((intent) =>
+    const jobs: Array<Promise<void>> = [];
+    const packed: PackMemberInput[] = [];
+    const flushPacked = () => {
+        const groups = partitionPackedUploads(packed.splice(0));
+        for (const group of groups) {
+            if (group.kind === "single") {
+                jobs.push(
+                    limit(() =>
+                        uploadOneIntent(snapshot, group.member.intent, signal).catch(
+                            (error: unknown) =>
+                                failUploadIntent(snapshot, group.member.intent, error),
+                        ),
+                    ),
+                );
+                continue;
+            }
+            jobs.push(
+                limit(() =>
+                    uploadPackedIntents(snapshot, group.members, signal).catch(
+                        async (error: unknown) => {
+                            await Promise.all(
+                                group.members.map((member) =>
+                                    failUploadIntent(snapshot, member.intent, error),
+                                ),
+                            );
+                        },
+                    ),
+                ),
+            );
+        }
+    };
+
+    for (const intent of snapshot.intents.filter((item) => item.state !== "completed")) {
+        const target = snapshot.targets.find((item) => item.intentId === intent.intentId);
+        if (!target) continue;
+        const source = sourceFiles.get(target.requestId)?.get(target.clientId);
+        if (!source) throw new Error("source_missing");
+        if (source.size >= DIRECT_UPLOAD_THRESHOLD) {
+            jobs.push(
                 limit(() =>
                     uploadOneIntent(snapshot, intent, signal).catch((error: unknown) =>
                         failUploadIntent(snapshot, intent, error),
                     ),
                 ),
-            ),
+            );
+            continue;
+        }
+        const prepared = await prepareIntentFile(intent, source);
+        packed.push({
+            intent: prepared.intent,
+            file: prepared.file,
+            logicalSize: source.size,
+            payloadBytes: prepared.file.size,
+        });
+        const packedBytes = packed.reduce((sum, member) => sum + member.payloadBytes, 0);
+        if (packed.length >= PACK_MAX_FILES || packedBytes >= PACK_PAYLOAD_BUDGET) flushPacked();
+    }
+    flushPacked();
+    await Promise.all(jobs);
+}
+
+async function uploadPackedIntents(
+    snapshot: UploadSessionSnapshot,
+    members: PackMemberInput[],
+    signal: AbortSignal,
+) {
+    await Promise.all(
+        members.map(async (member) => {
+            await saveUploadIntent({ ...member.intent, state: "uploading", updatedAt: Date.now() });
+            await setIntentTargets(snapshot.session.requestId, member.intent.intentId, "uploading");
+        }),
+    );
+    const results = await uploadPackBytes({ members, signal });
+    await Promise.all(
+        members.map(async (member, index) => {
+            const result = results[index] ?? {
+                status: "failed" as const,
+                reason: "pack_result_missing",
+            };
+            const stored = await getUploadIntent(member.intent.requestId, member.intent.intentId);
+            if (!stored) throw new Error("upload_intent_not_found");
+            await saveUploadIntent(completeUploadIntentAttempt(stored, result));
+            await setIntentTargets(
+                snapshot.session.requestId,
+                member.intent.intentId,
+                result.status === "completed" ? "completed" : result.status,
+                result.reason,
+            );
+            if (result.status === "completed") {
+                releaseIntentFiles(snapshot, member.intent.intentId);
+            }
+        }),
     );
 }
 
@@ -447,7 +535,7 @@ async function uploadOneIntent(
 async function prepareIntentFile(intent: PersistedUploadIntent, source: File) {
     const cached = encodedFiles.get(encodedFileKey(intent.requestId, intent.intentId));
     if (cached) return { intent, file: cached };
-    if (source.size >= 80 * 1024 * 1024 || (await isPreviewFile(source))) {
+    if (source.size >= DIRECT_UPLOAD_THRESHOLD || (await isPreviewFile(source))) {
         return { intent, file: source };
     }
     const compressed = await compressData(await source.arrayBuffer(), "zstd");

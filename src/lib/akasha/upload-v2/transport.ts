@@ -2,7 +2,8 @@ import { parseHttpBody } from "@/lib/cbor-response";
 
 import type { PersistedUploadIntent } from "./types";
 
-const DIRECT_UPLOAD_THRESHOLD = 80 * 1024 * 1024;
+import { DIRECT_UPLOAD_THRESHOLD, logicalBytesForPackProgress, packUploadUrl } from "./pack";
+
 const PART_SIZE = 25 * 1024 * 1024;
 const RETRY_LIMIT = 3;
 const COMPLETE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -18,10 +19,20 @@ export interface IntentTransportResult {
     reason?: string;
 }
 
+export type PackMemberInput = {
+    intent: PersistedUploadIntent;
+    file: File;
+    logicalSize: number;
+    payloadBytes: number;
+};
+
 interface HttpResult {
     status: number;
     reason?: string;
-    payload?: { status?: string };
+    payload?: {
+        status?: string;
+        results?: Array<{ intentId: string; status: string; reason?: string }>;
+    };
 }
 
 export async function uploadIntentBytes({
@@ -68,6 +79,79 @@ async function uploadDirect(
         await retryDelay(attempt, signal);
     }
     return { status: "paused" as const, reason: "retry_exhausted" };
+}
+
+export async function uploadPackBytes({
+    members,
+    callbacks = {},
+    signal,
+}: {
+    members: PackMemberInput[];
+    callbacks?: IntentTransportCallbacks;
+    signal?: AbortSignal;
+}): Promise<IntentTransportResult[]> {
+    if (signal?.aborted) {
+        return members.map(() => ({ status: "paused" as const, reason: "aborted" }));
+    }
+    const totalLogical = members.reduce((sum, member) => sum + member.logicalSize, 0);
+    const manifest = JSON.stringify({
+        entries: members.map((member) => ({
+            intentId: member.intent.intentId,
+            token: member.intent.token,
+            sha256: member.intent.sha256,
+            payloadBytes: member.payloadBytes,
+            ...(member.intent.compAlg ? { compAlg: member.intent.compAlg } : {}),
+        })),
+    });
+    const pack = new Blob(members.map((member) => member.file));
+
+    for (let attempt = 0; attempt <= RETRY_LIMIT; attempt++) {
+        const form = new FormData();
+        form.append("manifest", manifest);
+        form.append("pack", pack, "pack.bin");
+        const result = await sendXhr(
+            packUploadUrl(members[0].intent.url),
+            "POST",
+            form,
+            pack.size,
+            {
+                onProgress: (uploadedPayload) => {
+                    callbacks.onProgress?.(
+                        logicalBytesForPackProgress(members, uploadedPayload),
+                        totalLogical,
+                    );
+                },
+            },
+            signal,
+        );
+        if (result.status >= 200 && result.status < 300 && result.status !== 202) {
+            const packResults = result.payload?.results;
+            if (!packResults || packResults.length !== members.length) {
+                return members.map(() => ({
+                    status: "failed" as const,
+                    reason: result.reason || "pack_result_missing",
+                }));
+            }
+            return packResults.map((packResult) => {
+                if (packResult.status === "completed") return { status: "completed" as const };
+                if (packResult.status === "pending") {
+                    return { status: "paused" as const, reason: "pending" };
+                }
+                return {
+                    status: "failed" as const,
+                    reason: packResult.reason || packResult.status,
+                };
+            });
+        }
+        if (!isRetryable(result) || attempt === RETRY_LIMIT) {
+            return members.map(() => ({
+                status: isRetryable(result) ? ("paused" as const) : ("failed" as const),
+                reason: result.reason || `http_${result.status}`,
+            }));
+        }
+        await retryDelay(attempt, signal);
+    }
+    return members.map(() => ({ status: "paused" as const, reason: "retry_exhausted" }));
 }
 
 async function uploadParts(
