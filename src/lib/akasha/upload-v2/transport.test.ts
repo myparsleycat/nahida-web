@@ -60,6 +60,16 @@ describe("uploadIntentBytes", () => {
     });
 });
 
+const nteBundle = {
+    id: "bundle",
+    memberClientIds: ["utoc", "ucas"],
+    completeUrl: "/complete",
+    abortUrl: "/abort",
+    token: "bundle-token",
+    state: "pending" as const,
+    updatedAt: 0,
+};
+
 describe("completeNteBundle", () => {
     it("posts the bundle token and preserves an invalid NTE error code", async () => {
         const fetchMock = vi.fn(
@@ -72,21 +82,59 @@ describe("completeNteBundle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         try {
-            await expect(
-                completeNteBundle({
-                    id: "bundle",
-                    memberClientIds: ["utoc", "ucas"],
-                    completeUrl: "/complete",
-                    abortUrl: "/abort",
-                    token: "bundle-token",
-                    state: "pending",
-                    updatedAt: 0,
-                }),
-            ).resolves.toEqual({ status: "failed", reason: "invalid_nte_mod_file" });
+            await expect(completeNteBundle(nteBundle)).resolves.toEqual({
+                status: "failed",
+                reason: "invalid_nte_mod_file",
+            });
             expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
                 JSON.stringify({ token: "bundle-token" }),
             );
         } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("keeps polling 202 responses until the bundle completes", async () => {
+        vi.useFakeTimers();
+        let calls = 0;
+        const fetchMock = vi.fn(async () => {
+            calls++;
+            return new Response(JSON.stringify({ status: calls <= 5 ? "pending" : "completed" }), {
+                status: calls <= 5 ? 202 : 200,
+                headers: { "content-type": "application/json" },
+            });
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        try {
+            const pending = completeNteBundle(nteBundle);
+            await vi.runAllTimersAsync();
+            await expect(pending).resolves.toEqual({ status: "completed" });
+            expect(fetchMock).toHaveBeenCalledTimes(6);
+        } finally {
+            vi.useRealTimers();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("pauses after retryable transport failures exhaust RETRY_LIMIT", async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi.fn(
+            async () =>
+                new Response(JSON.stringify({ status: "error" }), {
+                    status: 500,
+                    headers: { "content-type": "application/json" },
+                }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        try {
+            const pending = completeNteBundle(nteBundle);
+            await vi.runAllTimersAsync();
+            await expect(pending).resolves.toEqual({ status: "paused", reason: "http_500" });
+            expect(fetchMock).toHaveBeenCalledTimes(4);
+        } finally {
+            vi.useRealTimers();
             vi.unstubAllGlobals();
         }
     });

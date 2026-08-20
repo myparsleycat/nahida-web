@@ -168,6 +168,7 @@
         "invalid_nte_mod_file": "유효한 NTE 모드 파일이 아닙니다.",
         "nte_client_upgrade_required": "NTE 모드를 업로드하려면 웹 앱을 새로고침해야 해요.",
         "nte_bundle_incomplete": "NTE 모드 파일 업로드가 아직 완료되지 않았어요.",
+        "nte_bundle_too_large": "이 NTE 모드는 파일이 너무 많아 한 그룹으로 업로드할 수 없어요.",
         "bundle_cleanup_failed": "실패한 NTE 모드의 임시 파일을 정리하지 못했어요.",
         "network_error": "네트워크 오류로 업로드하지 못했어요."
       }

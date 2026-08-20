@@ -166,7 +166,8 @@
         "invalid_nte_mod_file": "这不是有效的 NTE 模组文件。",
         "nte_client_upgrade_required": "上传 NTE 模组前请刷新网页应用。",
         "nte_bundle_incomplete": "NTE 模组文件尚未上传完成。",
-        "bundle_cleanup_failed": "无法清理失败 NTE 模组的临时文件。",
+        "nte_bundle_too_large": "此 NTE 模组文件过多，无法作为一组上传。",
+        "bundle_cleanup_failed": "无法清理失败的 NTE 模组临时文件。",
         "network_error": "因网络错误未能上传。"
       }
     }

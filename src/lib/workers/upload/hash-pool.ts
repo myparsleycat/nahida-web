@@ -37,6 +37,7 @@ export async function calculateHashesInParallel(
     const chunks = Array.from({ length: workers.length }, () => [] as HashableFile[]);
     files.forEach((file, index) => chunks[index % workers.length].push(file));
     let completedFiles = 0;
+    const abortListenerCleanups = new Set<() => void>();
 
     try {
         const results = await Promise.all(
@@ -45,9 +46,14 @@ export async function calculateHashesInParallel(
                     new Promise<Map<string, string>>((resolve, reject) => {
                         const worker = workers[workerIndex];
                         const abort = () => reject(new DOMException("Aborted", "AbortError"));
-                        signal?.addEventListener("abort", abort, { once: true });
-                        const finish = <T>(callback: (value: T) => void, value: T) => {
+                        const removeAbortListener = () => {
                             signal?.removeEventListener("abort", abort);
+                            abortListenerCleanups.delete(removeAbortListener);
+                        };
+                        signal?.addEventListener("abort", abort, { once: true });
+                        abortListenerCleanups.add(removeAbortListener);
+                        const finish = <T>(callback: (value: T) => void, value: T) => {
+                            removeAbortListener();
                             callback(value);
                         };
 
@@ -70,6 +76,7 @@ export async function calculateHashesInParallel(
         );
         return new Map(results.flatMap((result) => [...result]));
     } finally {
+        [...abortListenerCleanups].forEach((cleanup) => cleanup());
         cleanupSha256Workers(workers);
     }
 }

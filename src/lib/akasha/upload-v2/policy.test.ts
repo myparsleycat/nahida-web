@@ -453,6 +453,23 @@ describe("upload session recovery policy", () => {
         expect(result.targets[0]).not.toHaveProperty("itemId");
     });
 
+    it("does not retry oversized files or NTE groups", () => {
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("partial", [
+                    { ...target("big"), status: "failed", reason: "file_too_large" },
+                ]),
+            ),
+        ).toMatchObject({ canRetry: false });
+        expect(
+            getUploadSessionActionAvailability(
+                snapshot("partial", [
+                    { ...target("huge"), status: "failed", reason: "nte_bundle_too_large" },
+                ]),
+            ),
+        ).toMatchObject({ canRetry: false });
+    });
+
     it("does not retry an invalid NTE bundle", () => {
         const invalid = {
             ...target("invalid"),

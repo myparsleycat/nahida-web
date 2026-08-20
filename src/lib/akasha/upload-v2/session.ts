@@ -470,8 +470,19 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
                             }
                         })
                         .catch(async (error: unknown) => {
-                            bundleController.abort("upload_failed");
-                            await failUploadIntent(snapshot, intent, error);
+                            if (signal.aborted) return;
+                            if (!bundleController.signal.aborted) {
+                                bundleController.abort(
+                                    error instanceof Error ? error.message : "upload_failed",
+                                );
+                                await failUploadIntent(snapshot, intent, error);
+                                return;
+                            }
+                            await failUploadIntent(
+                                snapshot,
+                                intent,
+                                new Error("nte_bundle_incomplete"),
+                            );
                         }),
                 ),
             );
@@ -689,8 +700,15 @@ async function finalizeNteBundles(snapshot: UploadSessionSnapshot, signal: Abort
         const stored = current.session.nteBundles?.find((item) => item.id === bundle.id);
         if (!stored) continue;
         const members = current.targets.filter((target) => target.bundleId === stored.id);
+        const failedReasons = members
+            .filter((target) => target.status === "failed")
+            .map((target) => target.reason)
+            .filter((reason): reason is string => Boolean(reason));
         const reason =
-            members.find((target) => target.status === "failed")?.reason ??
+            failedReasons.find(
+                (failed) => failed !== "nte_bundle_incomplete" && failed !== "Aborted",
+            ) ??
+            failedReasons[0] ??
             (members.length === stored.memberClientIds.length
                 ? undefined
                 : "invalid_plan_response");

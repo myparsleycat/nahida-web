@@ -47,7 +47,9 @@ export async function completeNteBundle(
     bundle: PersistedNteBundle,
     signal?: AbortSignal,
 ): Promise<IntentTransportResult> {
-    for (let attempt = 0; attempt <= RETRY_LIMIT; attempt++) {
+    const startedAt = Date.now();
+    let transportFailures = 0;
+    for (let attempt = 0; Date.now() - startedAt < COMPLETE_TIMEOUT_MS; attempt++) {
         const result = await request(bundle.completeUrl, {
             method: "POST",
             body: JSON.stringify({ token: bundle.token }),
@@ -58,15 +60,20 @@ export async function completeNteBundle(
         if (result.status >= 200 && result.status < 300 && result.status !== 202) {
             return { status: "completed" };
         }
-        if (!isRetryable(result) || attempt === RETRY_LIMIT) {
+        if (result.status === 202) {
+            await retryDelay(Math.min(attempt, 4), signal, 30_000);
+            continue;
+        }
+        if (!isRetryable(result) || transportFailures >= RETRY_LIMIT) {
             return {
                 status: isRetryable(result) ? "paused" : "failed",
                 reason: result.payload?.code ?? result.reason ?? `http_${result.status}`,
             };
         }
-        await retryDelay(attempt, signal);
+        transportFailures++;
+        await retryDelay(Math.min(attempt, 4), signal, 30_000);
     }
-    return { status: "paused", reason: "retry_exhausted" };
+    return { status: "paused", reason: "complete_timeout" };
 }
 
 export async function abortNteBundle(bundle: PersistedNteBundle, signal?: AbortSignal) {

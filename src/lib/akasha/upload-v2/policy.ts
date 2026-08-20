@@ -353,7 +353,12 @@ export function applyUploadPlan({
 }
 
 export function isNonRetryableUploadReason(reason?: string) {
-    return reason === "invalid_nte_mod_file" || reason === "nte_client_upgrade_required";
+    return (
+        reason === "invalid_nte_mod_file" ||
+        reason === "nte_client_upgrade_required" ||
+        reason === "nte_bundle_too_large" ||
+        reason === "file_too_large"
+    );
 }
 
 export function getUploadRetryDecision({
