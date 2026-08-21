@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { AliceLoader, Center } from "@/components/common";
 import { CustomCursor } from "@/components/custom-cursor";
 import { AnnouncementStack, useAnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { DonationDialog } from "@/components/layout/DonationDialog";
 import { MobileSidePanel } from "@/components/layout/MobileSidePanel";
 import { SidePanel } from "@/components/layout/SidePanel";
 import { buttonVariants } from "@/components/ui/button";
@@ -104,6 +105,7 @@ function RootComponent() {
               <Outlet />
             </div>
           </main>
+          <DonationDialog />
         </div>
       </BaseComponent>
     );

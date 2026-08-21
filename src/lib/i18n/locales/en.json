@@ -433,6 +433,17 @@
       "permissionUpload": "Can upload"
     }
   },
+  "donation": {
+    "dialog": {
+      "title": "Point donation",
+      "intro": "Please send points to the 미호요스킨모드 channel.",
+      "step1": "Click the \"계좌\" button at the top of the channel.",
+      "step2": "Enter a value of 100 or more, then press \"보내기\".",
+      "openChannel": "Open channel",
+      "accountImageAlt": "계좌 button at the top of the 미호요스킨모드 channel",
+      "sendImageAlt": "Point amount field and Send button for the channel"
+    }
+  },
   "@": {
     "cannot_use_showSaveFilePicker": {
       "0": "Unsupported browser.",

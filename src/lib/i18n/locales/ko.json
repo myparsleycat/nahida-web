@@ -424,6 +424,17 @@
       "permissionUpload": "업로드 가능"
     }
   },
+  "donation": {
+    "dialog": {
+      "title": "포인트 후원 안내",
+      "intro": "미호요스킨모드 채널에 포인트를 보내주세요.",
+      "step1": "채널 상단에서 \"계좌\" 버튼을 클릭합니다.",
+      "step2": "입력란에 100 이상의 값을 입력하고 보내기를 누릅니다.",
+      "openChannel": "채널 열기",
+      "accountImageAlt": "미호요스킨모드 채널 상단의 계좌 버튼",
+      "sendImageAlt": "채널에 포인트를 보내는 입력란과 보내기 버튼"
+    }
+  },
   "@": {
     "cannot_use_showSaveFilePicker": {
       "0": "지원하지 않는 브라우저입니다",

@@ -412,6 +412,17 @@
       "permissionUpload": "可上传"
     }
   },
+  "donation": {
+    "dialog": {
+      "title": "积分赞助说明",
+      "intro": "请向미호요스킨모드频道发送积分。",
+      "step1": "点击频道顶部的“계좌”按钮。",
+      "step2": "在输入框中输入 100 以上的数值，然后按下“보내기”。",
+      "openChannel": "打开频道",
+      "accountImageAlt": "미호요스킨모드频道顶部的“계좌”按钮",
+      "sendImageAlt": "向频道发送积分的输入框和发送按钮"
+    }
+  },
   "@": {
     "cannot_use_showSaveFilePicker": {
       "0": "不支持的浏览器",
