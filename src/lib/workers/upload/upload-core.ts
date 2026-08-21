@@ -1,6 +1,7 @@
 import PQueue from "p-queue";
 
-import { isPreviewFile, reverseFileContent } from "@/lib/akasha/services/drive-common";
+import { reverseFileContent } from "@/lib/akasha/services/drive-common";
+import { shouldSkipUploadCompression } from "@/lib/akasha/upload-v2/compress";
 
 import type { CreateManyResults, FileInfoWorker } from "../types";
 
@@ -92,28 +93,18 @@ export function createUploadCore(deps: UploadDeps) {
         fileCompAlg: "zstd" | "gzip" | null | undefined,
         formData: FormData,
     ): Promise<Blob> {
-        const isPreview = await isPreviewFile(file);
+        if (fileCompAlg && !(await shouldSkipUploadCompression(file))) {
+            const buffer = await file.arrayBuffer();
+            const { compressedData, isCompressed } = await compressData(buffer, fileCompAlg);
 
-        if (fileCompAlg && file.size > 100 && !isPreview) {
-            try {
-                const buffer = await file.arrayBuffer();
-                const { compressedData, isCompressed } = await compressData(buffer, fileCompAlg);
-
-                if (isCompressed && compressedData) {
-                    const blob = new Blob([compressedData as BlobPart]);
-                    formData.append("file", blob);
-                    formData.append("comp-alg", fileCompAlg);
-                    return blob;
-                }
-
-                formData.append("file", file);
-                formData.append("comp-alg", fileCompAlg);
-                return file;
-            } catch {
-                formData.append("file", file);
-                formData.append("comp-alg", fileCompAlg);
-                return file;
+            if (!isCompressed || !compressedData) {
+                throw new Error("compression_failed");
             }
+
+            const blob = new Blob([compressedData as BlobPart]);
+            formData.append("file", blob);
+            formData.append("comp-alg", fileCompAlg);
+            return blob;
         }
 
         formData.append("file", file);
@@ -136,11 +127,8 @@ export function createUploadCore(deps: UploadDeps) {
         formData.append("file", reversedFile);
         formData.append("reverse", "true");
 
-        if (fileCompAlg) {
-            const isPreview = await isPreviewFile(reversedFile);
-            if (!isPreview) {
-                formData.append("comp-alg", fileCompAlg);
-            }
+        if (fileCompAlg && !(await shouldSkipUploadCompression(reversedFile))) {
+            formData.append("comp-alg", fileCompAlg);
         }
 
         return new Promise<boolean>((resolve, reject) => {
@@ -289,7 +277,16 @@ export function createUploadCore(deps: UploadDeps) {
             };
 
             void (async () => {
-                await prepareFileForUpload(file, options.compAlg, formData);
+                try {
+                    await prepareFileForUpload(file, options.compAlg, formData);
+                } catch (error) {
+                    console.error(
+                        "파일 압축 중 오류:",
+                        error instanceof Error ? error.message : error,
+                    );
+                    resolve(false);
+                    return;
+                }
                 xhr.withCredentials = true;
                 xhr.open("POST", UPLOAD_URL);
                 xhr.send(formData);
@@ -317,7 +314,7 @@ export function createUploadCore(deps: UploadDeps) {
         try {
             const chunks = splitFileIntoChunks(file.file);
             const totalChunks = chunks.length;
-            const isPreview = await isPreviewFile(file.file);
+            const skipCompression = await shouldSkipUploadCompression(file.file);
 
             for (let i = 0; i < totalChunks; i++) {
                 const previousProgress = i * CHUNK_SIZE;
@@ -327,7 +324,7 @@ export function createUploadCore(deps: UploadDeps) {
                     fileName: fileInfo.name,
                     partIndex: i,
                     totalParts: totalChunks,
-                    compAlg: !isPreview ? compAlg : undefined,
+                    compAlg: skipCompression ? undefined : compAlg,
                     previousProgress,
                     onProgress: (loaded) => {
                         updateProgress(FID, previousProgress + loaded, file.size, true);
@@ -365,9 +362,9 @@ export function createUploadCore(deps: UploadDeps) {
                 }
 
                 const { FID, name, file, form, size } = fileInfo;
-                const isPreview = await isPreviewFile(file.file);
+                const skipCompression = await shouldSkipUploadCompression(file.file);
                 const success =
-                    size >= LARGE_FILE_THRESHOLD && !isPreview
+                    size >= LARGE_FILE_THRESHOLD && !skipCompression
                         ? await uploadLargeFile({
                               FID,
                               name,
@@ -379,7 +376,7 @@ export function createUploadCore(deps: UploadDeps) {
                         : await uploadFileOrChunk(form, file.file, {
                               FID,
                               fileName: name,
-                              compAlg: !isPreview ? compAlg : undefined,
+                              compAlg: skipCompression ? undefined : compAlg,
                               onProgress: (loaded, total) => {
                                   updateProgress(FID, loaded, total, true);
                               },

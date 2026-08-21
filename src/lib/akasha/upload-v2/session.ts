@@ -6,7 +6,6 @@ import type { DirectoryInfo, FileInfoComponent } from "@/lib/workers/akasha.work
 import { queryClient } from "@/integrations/queryClient";
 import { eden } from "@/lib/eden";
 import { cleanupUploadOpfsArtifacts } from "@/lib/opfs";
-import { compressData } from "@/lib/utils";
 import { calculateHashesInParallel } from "@/lib/workers/upload/hash-pool";
 import {
     registerUploadSessionActions,
@@ -24,7 +23,7 @@ import type {
     UploadSessionStatus,
 } from "./types";
 
-import { isPreviewFile } from "../services/drive-common";
+import { prepareUploadFile } from "./compress";
 import {
     DIRECT_UPLOAD_THRESHOLD,
     PACK_MAX_FILES,
@@ -498,13 +497,18 @@ async function uploadPlannedIntents(snapshot: UploadSessionSnapshot, signal: Abo
             );
             continue;
         }
-        const prepared = await prepareIntentFile(intent, source);
-        packed.push({
-            intent: prepared.intent,
-            file: prepared.file,
-            logicalSize: source.size,
-            payloadBytes: prepared.file.size,
-        });
+        try {
+            const prepared = await prepareIntentFile(intent, source);
+            packed.push({
+                intent: prepared.intent,
+                file: prepared.file,
+                logicalSize: source.size,
+                payloadBytes: prepared.file.size,
+            });
+        } catch (error) {
+            jobs.push(directLimit(() => failUploadIntent(snapshot, intent, error)));
+            continue;
+        }
         const packedBytes = packed.reduce((sum, member) => sum + member.payloadBytes, 0);
         if (packed.length >= PACK_MAX_FILES || packedBytes >= PACK_PAYLOAD_BUDGET) flushPacked();
     }
@@ -650,18 +654,12 @@ async function uploadOneIntent(
 async function prepareIntentFile(intent: PersistedUploadIntent, source: File) {
     const cached = encodedFiles.get(encodedFileKey(intent.requestId, intent.intentId));
     if (cached) return { intent, file: cached };
-    if (source.size >= DIRECT_UPLOAD_THRESHOLD || (await isPreviewFile(source))) {
-        return { intent, file: source };
-    }
-    const compressed = await compressData(await source.arrayBuffer(), "zstd");
-    if (!compressed.isCompressed || !compressed.compressedData) {
-        return { intent, file: source };
-    }
-    const file = new File([new Uint8Array(compressed.compressedData).slice().buffer], source.name);
-    const updated = { ...intent, compAlg: "zstd" as const, updatedAt: Date.now() };
-    encodedFiles.set(encodedFileKey(intent.requestId, intent.intentId), file);
+    const prepared = await prepareUploadFile(source);
+    if (!prepared.compAlg) return { intent, file: prepared.file };
+    encodedFiles.set(encodedFileKey(intent.requestId, intent.intentId), prepared.file);
+    const updated = { ...intent, compAlg: prepared.compAlg, updatedAt: Date.now() };
     await saveUploadIntent(updated);
-    return { intent: updated, file };
+    return { intent: updated, file: prepared.file };
 }
 
 async function failUploadIntent(

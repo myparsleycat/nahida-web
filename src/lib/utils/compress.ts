@@ -20,7 +20,7 @@ export const compressData = async (
 
         const fileType = await fileTypeFromBuffer(data);
 
-        if (fileType?.mime.startsWith("image/")) {
+        if (fileType?.mime.startsWith("image/") || fileType?.mime.startsWith("video/")) {
             return { compressedData: null, isCompressed: false };
         }
 
