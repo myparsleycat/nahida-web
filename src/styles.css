@@ -220,6 +220,10 @@ body {
 }
 
 img,
+video {
+    image-rendering: auto;
+}
+
 canvas,
 svg {
     image-rendering: pixelated;
