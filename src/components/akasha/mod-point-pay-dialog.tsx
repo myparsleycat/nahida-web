@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { ExternalLink as ExternalLinkIcon } from "pixelarticons/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { ARCA_ACCOUNT_URL } from "@/lib/akasha/services/mod-points";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
-import { useUIStore } from "@/stores/ui.store";
 
 interface ModPointPayDialogProps {
   open: boolean;
@@ -34,7 +34,6 @@ export function ModPointPayDialog(props: ModPointPayDialogProps) {
   const { open, onOpenChange, modId, collectionId, amount, scope, onPaid } = props;
   const { t } = useTranslation();
   const session = useSession();
-  const setLoginDialogOpen = useUIStore((state) => state.setLoginDialogOpen);
   const [ledgerId, setLedgerId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -88,14 +87,10 @@ export function ModPointPayDialog(props: ModPointPayDialogProps) {
         {!loggedIn ? (
           <div className="space-y-3">
             <p>{t("akasha.points.needLogin")}</p>
-            <Button
-              type="button"
-              onClick={() => {
-                onOpenChange(false);
-                setLoginDialogOpen(true);
-              }}
-            >
-              {t("g.login")}
+            <Button type="button" asChild>
+              <Link to="/sign-in" search={{ redirect: window.location.href }}>
+                {t("g.login")}
+              </Link>
             </Button>
           </div>
         ) : arcaQuery.isLoading ? null : !linked ? (
