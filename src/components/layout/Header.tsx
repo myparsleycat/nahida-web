@@ -1,6 +1,6 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   Cloud as CloudyIcon,
   Leaf as LeafyGreenIcon,
@@ -14,7 +14,6 @@ import { useWindowScroll } from "react-use";
 
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import { Dock, DockIcon } from "@/components/magicui/dock";
-import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,17 +25,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { useUIStore } from "@/stores/ui.store";
 
 export default function Header() {
   const { y: scrollY } = useWindowScroll();
-  const location = useLocation();
   const [headerOpacity, setHeaderOpacity] = useState(0);
   const [borderBool, setBorderBool] = useState(true);
   const { data: session } = useSession();
   const driveRootId = session?.drive?.rootId;
   const { t } = useTranslation();
-  const { setLoginDialogOpen } = useUIStore();
 
   const SCROLL_THRESHOLD = 40;
 
