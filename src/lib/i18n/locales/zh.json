@@ -189,7 +189,23 @@
       "previous": "上一页",
       "next": "下一页"
     },
-    "delete_account": "删除账户"
+    "delete_account": "删除账户",
+    "arca": "Arca.live",
+    "arca_link": "绑定 arca.live",
+    "arca_issue_key": "签发密钥",
+    "arca_expires_in": "{{time}}后过期",
+    "arca_copy_key": "复制",
+    "arca_open_post": "打开帖子",
+    "arca_verify": "确认绑定",
+    "arca_verify_cooldown": "{{sec}}秒后重试",
+    "arca_key_issued": "已签发验证密钥，请将其作为评论发布",
+    "arca_copied": "已复制验证密钥",
+    "arca_linked": "已绑定 {{username}}",
+    "arca_not_found": "未找到验证评论，请发布密钥后重试",
+    "arca_conflict": "该 arca.live 用户名已绑定其他账号",
+    "arca_unavailable": "无法完成 arca.live 验证，请稍后再试",
+    "arca_unlink": "解除绑定",
+    "arca_unlinked": "已解除 arca.live 绑定"
   },
   "c": {
     "data-table-actions": {

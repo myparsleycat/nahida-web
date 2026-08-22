@@ -208,7 +208,23 @@
         "delete": "Delete"
       }
     },
-    "delete_account": "Delete Account"
+    "delete_account": "Delete Account",
+    "arca": "Arca.live",
+    "arca_link": "arca.live link",
+    "arca_issue_key": "Issue key",
+    "arca_expires_in": "Expires in {{time}}",
+    "arca_copy_key": "Copy",
+    "arca_open_post": "Open post",
+    "arca_verify": "Verify",
+    "arca_verify_cooldown": "Retry in {{sec}}s",
+    "arca_key_issued": "Verification key issued. Post it as a comment",
+    "arca_copied": "Copied the verification key",
+    "arca_linked": "Linked to {{username}}",
+    "arca_not_found": "Verification comment not found. Post the key and try again",
+    "arca_conflict": "This arca.live username is already linked to another account",
+    "arca_unavailable": "Could not verify with arca.live. Try again later",
+    "arca_unlink": "Unlink",
+    "arca_unlinked": "Unlinked arca.live"
   },
   "c": {
     "data-table-actions": {
