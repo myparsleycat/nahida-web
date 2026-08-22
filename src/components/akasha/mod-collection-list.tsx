@@ -38,11 +38,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
 import { deleteModCollection } from "@/lib/akasha/services/deletion";
 import { parseModPath } from "@/lib/akasha/services/mod-drive/common";
-import {
-  POINT_AMOUNT_MAX,
-  POINT_AMOUNT_MIN,
-  parsePointAmountInput,
-} from "@/lib/akasha/services/mod-points";
+import { parsePointAmountInput } from "@/lib/akasha/services/mod-points";
+import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
 
@@ -68,6 +65,10 @@ export function CollectionList(props: CollectionListProps) {
   const [pointCollectionId, setPointCollectionId] = useState("");
   const [pointAmountDraft, setPointAmountDraft] = useState("");
   const pointCollection = data.collections.find((item) => item.id === pointCollectionId);
+  const pointSettings = usePointSettings();
+  const pointRange = pointSettings.data
+    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
+    : null;
 
   const creMut = useMutation({
     mutationKey: ["akasha", "mod", "collection", "create"],
@@ -154,12 +155,13 @@ export function CollectionList(props: CollectionListProps) {
 
   const saveCollectionPoints = () => {
     if (!pointCollectionId) return;
-    const parsed = parsePointAmountInput(pointAmountDraft);
+    if (!pointRange) return;
+    const parsed = parsePointAmountInput(pointAmountDraft, pointRange);
     if (parsed === "invalid") {
       toast.warning(
         t("akasha.points.amountRange", {
-          min: POINT_AMOUNT_MIN,
-          max: POINT_AMOUNT_MAX,
+          min: pointRange.min,
+          max: pointRange.max,
         }),
       );
       return;
@@ -368,8 +370,8 @@ export function CollectionList(props: CollectionListProps) {
               </DialogTitle>
               <DialogDescription>
                 {t("akasha.points.editCollectionDescription", {
-                  min: POINT_AMOUNT_MIN,
-                  max: POINT_AMOUNT_MAX,
+                  min: pointRange?.min ?? "",
+                  max: pointRange?.max ?? "",
                 })}
               </DialogDescription>
             </DialogHeader>
@@ -381,6 +383,7 @@ export function CollectionList(props: CollectionListProps) {
                 value={pointAmountDraft}
                 onValueChange={setPointAmountDraft}
                 placeholder={t("akasha.points.free")}
+                disabled={!pointRange}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !pointMut.isPending) {
                     saveCollectionPoints();
@@ -392,7 +395,7 @@ export function CollectionList(props: CollectionListProps) {
               <Button variant="outline" onClick={() => setPointCollectionId("")}>
                 {t("g.cancel")}
               </Button>
-              <Button disabled={pointMut.isPending} onClick={saveCollectionPoints}>
+              <Button disabled={pointMut.isPending || !pointRange} onClick={saveCollectionPoints}>
                 {t("akasha.points.save")}
               </Button>
             </DialogFooter>

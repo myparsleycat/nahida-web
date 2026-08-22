@@ -26,11 +26,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import {
-  parseWithdrawAmountInput,
-  POINT_WITHDRAW_MIN,
-  quoteWithdrawal,
-} from "@/lib/akasha/services/point-withdraw";
+import { usePointSettings } from "@/lib/akasha/services/point-settings";
+import { parseWithdrawAmountInput, quoteWithdrawal } from "@/lib/akasha/services/point-withdraw";
 import { authClient, useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -45,6 +42,9 @@ function RouteComponent() {
 
   const [delaccinput, setDelAccInput] = useState("");
   const [withdrawInput, setWithdrawInput] = useState("");
+  const pointSettings = usePointSettings();
+  const withdrawMin = pointSettings.data?.point_withdraw_min;
+  const feePercent = pointSettings.data?.point_withdraw_fee_percent;
 
   const query = useQuery({
     queryKey: ["u:mods-count"],
@@ -88,12 +88,18 @@ function RouteComponent() {
   const balance = balanceQuery.data ?? 0;
   const linkedUsername = arcaQuery.data?.arcaUsername ?? null;
   const withdrawAmount = parseWithdrawAmountInput(withdrawInput);
-  const withdrawQuote = withdrawAmount != null ? quoteWithdrawal(withdrawAmount) : null;
-  const withdrawTooSmall = withdrawAmount != null && withdrawAmount < POINT_WITHDRAW_MIN;
+  const withdrawQuote =
+    withdrawAmount != null && feePercent != null
+      ? quoteWithdrawal(withdrawAmount, feePercent)
+      : null;
+  const withdrawTooSmall =
+    withdrawAmount != null && withdrawMin != null && withdrawAmount < withdrawMin;
   const withdrawTooLarge = withdrawAmount != null && withdrawAmount > balance;
   const canWithdraw =
     !!linkedUsername &&
     withdrawAmount != null &&
+    withdrawMin != null &&
+    feePercent != null &&
     !withdrawTooSmall &&
     !withdrawTooLarge;
 
@@ -145,7 +151,7 @@ function RouteComponent() {
                     {linkedUsername
                       ? t("u.points_withdraw_description", {
                           username: linkedUsername,
-                          min: POINT_WITHDRAW_MIN,
+                          min: withdrawMin ?? "",
                         })
                       : t("u.points_withdraw_need_arca")}
                   </span>
@@ -162,10 +168,11 @@ function RouteComponent() {
                       placeholder={t("u.points_withdraw_amount")}
                       value={withdrawInput}
                       onValueChange={setWithdrawInput}
+                      disabled={withdrawMin == null}
                     />
                     {withdrawTooSmall ? (
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {t("u.points_withdraw_min", { min: POINT_WITHDRAW_MIN })}
+                        {t("u.points_withdraw_min", { min: withdrawMin })}
                       </p>
                     ) : withdrawTooLarge ? (
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -187,7 +194,9 @@ function RouteComponent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>{t("u.points_withdraw_confirm_title")}</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            {t("u.points_withdraw_confirm_title")}
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
                             {t("u.points_withdraw_confirm_description", {
                               amount: withdrawAmount ?? 0,
@@ -363,9 +372,7 @@ function withdrawErrorCode(value: unknown) {
   return "unknown";
 }
 
-function isWithdrawResult(
-  data: unknown,
-): data is { payout: number; arcaUsername: string } {
+function isWithdrawResult(data: unknown): data is { payout: number; arcaUsername: string } {
   return (
     !!data &&
     typeof data === "object" &&

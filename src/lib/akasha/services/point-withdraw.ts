@@ -1,7 +1,5 @@
-export const POINT_WITHDRAW_MIN = 500;
-
-export function quoteWithdrawal(amount: number) {
-    const fee = Math.floor(amount / 4);
+export function quoteWithdrawal(amount: number, feePercent: number) {
+    const fee = Math.floor((amount * feePercent) / 100);
     return { fee, payout: amount - fee };
 }
 

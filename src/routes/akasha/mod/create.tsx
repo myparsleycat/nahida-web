@@ -18,7 +18,7 @@ import { Spinner } from "@/components/ui/spinner";
 import TagsInput from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
-import { POINT_AMOUNT_MAX, POINT_AMOUNT_MIN } from "@/lib/akasha/services/mod-points";
+import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -34,6 +34,10 @@ function RouteComponent() {
   const navi = useNavigate();
   const session = useSession();
   const loggedIn = !!session.data?.user;
+  const pointSettings = usePointSettings();
+  const pointRange = pointSettings.data
+    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
+    : null;
 
   interface Values {
     title: string;
@@ -288,13 +292,14 @@ function RouteComponent() {
                         const amount = Number(value);
                         if (!value) return t("akasha.points.amountRequired");
                         if (
+                          !pointRange ||
                           !Number.isInteger(amount) ||
-                          amount < POINT_AMOUNT_MIN ||
-                          amount > POINT_AMOUNT_MAX
+                          amount < pointRange.min ||
+                          amount > pointRange.max
                         ) {
                           return t("akasha.points.amountRange", {
-                            min: POINT_AMOUNT_MIN,
-                            max: POINT_AMOUNT_MAX,
+                            min: pointRange?.min ?? "",
+                            max: pointRange?.max ?? "",
                           });
                         }
                       },
@@ -307,6 +312,7 @@ function RouteComponent() {
                           inputMode="numeric"
                           value={f.state.value}
                           onValueChange={(value) => f.handleChange(value)}
+                          disabled={!pointRange}
                         />
                         <FieldInfo field={f} />
                       </div>

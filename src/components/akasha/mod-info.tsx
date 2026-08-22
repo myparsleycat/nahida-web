@@ -44,11 +44,8 @@ import {
 } from "@/components/ui/dialog";
 import { useModContext, type AkashaMod } from "@/context/ModContext";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
-import {
-  POINT_AMOUNT_MAX,
-  POINT_AMOUNT_MIN,
-  parsePointAmountInput,
-} from "@/lib/akasha/services/mod-points";
+import { parsePointAmountInput } from "@/lib/akasha/services/mod-points";
+import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
@@ -265,6 +262,10 @@ function EditDialog(props: EditDialogProps) {
   const { modId, modQuery, sig } = props;
   const { t } = useTranslation();
   const router = useRouter();
+  const pointSettings = usePointSettings();
+  const pointRange = pointSettings.data
+    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
+    : null;
 
   const refetch = async () => {
     await router.invalidate();
@@ -541,14 +542,21 @@ function EditDialog(props: EditDialogProps) {
             <Label>{t("akasha.points.scope")}</Label>
             <Select
               value={modQuery?.points?.scope ?? "none"}
+              disabled={!pointRange}
               onValueChange={async (scope: "none" | "mod" | "collection") => {
                 if (!modId) return;
                 const amount = modQuery?.points?.amount ?? undefined;
-                if (scope === "mod" && (amount == null || amount < POINT_AMOUNT_MIN)) {
+                if (
+                  scope === "mod" &&
+                  (!pointRange ||
+                    amount == null ||
+                    amount < pointRange.min ||
+                    amount > pointRange.max)
+                ) {
                   toast.warning(
                     t("akasha.points.amountRange", {
-                      min: POINT_AMOUNT_MIN,
-                      max: POINT_AMOUNT_MAX,
+                      min: pointRange?.min ?? "",
+                      max: pointRange?.max ?? "",
                     }),
                   );
                   return;
@@ -587,14 +595,16 @@ function EditDialog(props: EditDialogProps) {
               inputMode="numeric"
               defaultValue={modQuery?.points?.amount ?? ""}
               key={String(modQuery?.points?.amount ?? "")}
+              disabled={!pointRange}
               onBlur={async (event) => {
                 if (!modId) return;
-                const parsed = parsePointAmountInput(event.currentTarget.value);
+                if (!pointRange) return;
+                const parsed = parsePointAmountInput(event.currentTarget.value, pointRange);
                 if (parsed === "invalid" || (modQuery?.points?.scope === "mod" && parsed == null)) {
                   toast.warning(
                     t("akasha.points.amountRange", {
-                      min: POINT_AMOUNT_MIN,
-                      max: POINT_AMOUNT_MAX,
+                      min: pointRange.min,
+                      max: pointRange.max,
                     }),
                   );
                   return;

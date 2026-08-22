@@ -1,7 +1,5 @@
 import type { AkashaMod } from "@/context/ModContext";
 
-export const POINT_AMOUNT_MIN = 100;
-export const POINT_AMOUNT_MAX = 5000;
 export const ARCA_ACCOUNT_URL = "https://arca.live/b/genshinskinmode/account";
 
 export function isModOwner(mod: AkashaMod | null | undefined) {
@@ -26,11 +24,14 @@ export function requiredPointAmount(mod: AkashaMod | null | undefined, collectio
     return null;
 }
 
-export function parsePointAmountInput(value: string): number | null | "invalid" {
+export function parsePointAmountInput(
+    value: string,
+    range: { min: number; max: number },
+): number | null | "invalid" {
     const trimmed = value.trim();
     if (!trimmed) return null;
     const amount = Number(trimmed);
-    if (!Number.isInteger(amount) || amount < POINT_AMOUNT_MIN || amount > POINT_AMOUNT_MAX) {
+    if (!Number.isInteger(amount) || amount < range.min || amount > range.max) {
         return "invalid";
     }
     return amount;

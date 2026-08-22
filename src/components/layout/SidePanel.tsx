@@ -5,6 +5,7 @@ import {
   Login as LogInIcon,
   Logout as LogOutIcon,
   Settings2 as SettingsIcon,
+  Sliders as SlidersIcon,
   Upload as UploadIcon,
 } from "pixelarticons/react";
 import { useEffect } from "react";
@@ -137,6 +138,13 @@ export function SidePanelContent(props: SidePanelContentProps) {
         <AnimatedThemeToggler className={buttonVariants({ variant: "ghost", size: "icon-lg" })} />
         {labeled && <span className="text-sm">{t("g.theme")}</span>}
       </div>
+
+      {session?.user.role === "staff" && (
+        <Link to="/admin" className={linkClass}>
+          <SlidersIcon className="size-6" />
+          {labeled && <span>{t("g.admin")}</span>}
+        </Link>
+      )}
 
       <Link to="/setting" className={linkClass}>
         <SettingsIcon className="size-6" />
