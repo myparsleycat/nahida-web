@@ -211,6 +211,11 @@ export function Password({ password }: { password: boolean }) {
   }
 }
 
+export function Paid({ paidAmount }: { paidAmount: number | null }) {
+  if (paidAmount === null) return <XIcon />;
+  return <span>{paidAmount}</span>;
+}
+
 export function Title({ title }: { title: string }) {
   return (
     <Popover>

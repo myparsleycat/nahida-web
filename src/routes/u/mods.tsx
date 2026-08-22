@@ -7,6 +7,7 @@ import { Center, ServerCrash } from "@/components/common";
 import {
   Actions,
   Description,
+  Paid,
   Password,
   Preview,
   Status,
@@ -86,6 +87,7 @@ function RouteComponent() {
       createdAt: Date;
       expiresAt: Date | null;
       password: boolean;
+      paidAmount: number | null;
       preview?: {
         default: string;
         mime: string;
@@ -110,6 +112,7 @@ function RouteComponent() {
         createdAt: new Date(mod.uploaded_at * 1000),
         expiresAt: mod.expires_at ? new Date(mod.expires_at * 1000) : null,
         password: mod.password,
+        paidAmount: null,
         preview: {
           default: mod.preview_url,
           mime: "image/*",
@@ -129,6 +132,7 @@ function RouteComponent() {
         createdAt: new Date(mod.createdAt),
         expiresAt: mod.expiresAt ? new Date(mod.expiresAt) : null,
         password: mod.password,
+        paidAmount: mod.paidAmount,
         preview: mod.preview && {
           default: mod.preview.default,
           mime: mod.preview.mime,
@@ -207,6 +211,7 @@ function RouteComponent() {
                   <TableHead className="w-25">{t("u.mods.preview")}</TableHead>
                   <TableHead>{t("u.mods.upload_date")}</TableHead>
                   <TableHead>{t("u.mods.status")}</TableHead>
+                  <TableHead>{t("u.mods.paid")}</TableHead>
                   <TableHead>{t("u.mods.password")}</TableHead>
                   <TableHead>{t("u.mods.title")}</TableHead>
                   <TableHead>{t("u.mods.description")}</TableHead>
@@ -226,6 +231,9 @@ function RouteComponent() {
                       </TableCell>
                       <TableCell>
                         <Status c_status={mod.c_status} expiresAt={mod.expiresAt} />
+                      </TableCell>
+                      <TableCell>
+                        <Paid paidAmount={mod.paidAmount} />
                       </TableCell>
                       <TableCell>
                         <Password password={mod.password} />
@@ -266,6 +274,9 @@ function Placeholder() {
       </TableCell>
       <TableCell>
         <Skeleton className="h-6 w-24" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="size-8" />
       </TableCell>
       <TableCell>
         <Skeleton className="size-8" />
