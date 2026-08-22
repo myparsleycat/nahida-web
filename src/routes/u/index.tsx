@@ -52,7 +52,7 @@ function RouteComponent() {
   });
   const pointSettings = usePointSettings();
   const withdrawMin = pointSettings.data?.point_withdraw_min;
-  const feePercent = pointSettings.data?.point_withdraw_fee_percent;
+  const feePercents = pointSettings.data?.point_withdraw_fee_percent;
 
   const query = useQuery({
     queryKey: ["u:mods-count"],
@@ -164,7 +164,7 @@ function RouteComponent() {
                       setWithdrawInputs((current) => ({ ...current, [channel]: value }))
                     }
                     withdrawMin={withdrawMin}
-                    feePercent={feePercent}
+                    feePercent={feePercents?.[channel]}
                     username={linkedUsername}
                     onDone={async () => {
                       setWithdrawInputs((current) => ({ ...current, [channel]: "" }));
@@ -332,7 +332,9 @@ function ChannelWithdraw(props: {
             {t("u.points_withdraw_min", { min: props.withdrawMin })}
           </p>
         ) : tooLarge ? (
-          <p className="mt-1 text-sm text-muted-foreground">{t("u.points_withdraw_insufficient")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("u.points_withdraw_insufficient")}
+          </p>
         ) : quote ? (
           <p className="mt-1 text-sm text-muted-foreground">
             {t("u.points_withdraw_quote", {

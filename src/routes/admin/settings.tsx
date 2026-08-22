@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ARCA_CHANNEL_IDS, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { pointSettingsQueryKey, usePointSettings } from "@/lib/akasha/services/point-settings";
 import {
   effectiveWithdrawFeePercent,
@@ -31,14 +32,14 @@ function RouteComponent() {
           <CardHeader>
             <CardTitle>포인트 설정</CardTitle>
             <CardDescription>
-              유료 판매 가격과 출금 규칙을 변경합니다. 기본 {POINT_WITHDRAW_FEE_BASE_PERCENT}%에
-              추가 수수료를 더해 적용합니다.
+              유료 판매 가격과 출금 규칙을 변경합니다. 기본 {POINT_WITHDRAW_FEE_BASE_PERCENT}%는
+              모든 채널에 동일하게 적용하고, 추가 수수료만 채널마다 따로 둡니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {query.data ? (
               <SettingsForm
-                key={`${query.data.point_amount_min}-${query.data.point_amount_max}-${query.data.point_withdraw_min}-${query.data.point_withdraw_fee_percent}`}
+                key={`${query.data.point_amount_min}-${query.data.point_amount_max}-${query.data.point_withdraw_min}-${ARCA_CHANNEL_IDS.map((id) => query.data.point_withdraw_fee_percent[id]).join("-")}`}
                 initial={query.data}
               />
             ) : (
@@ -56,7 +57,7 @@ function SettingsForm(props: {
     point_amount_min: number;
     point_amount_max: number;
     point_withdraw_min: number;
-    point_withdraw_fee_percent: number;
+    point_withdraw_fee_percent: Record<ArcaChannel, number>;
   };
 }) {
   const queryClient = useQueryClient();
@@ -64,7 +65,9 @@ function SettingsForm(props: {
     point_amount_min: String(props.initial.point_amount_min),
     point_amount_max: String(props.initial.point_amount_max),
     point_withdraw_min: String(props.initial.point_withdraw_min),
-    point_withdraw_fee_percent: String(props.initial.point_withdraw_fee_percent),
+    point_withdraw_fee_percent: Object.fromEntries(
+      ARCA_CHANNEL_IDS.map((id) => [id, String(props.initial.point_withdraw_fee_percent[id])]),
+    ) as Record<ArcaChannel, string>,
   });
 
   const save = useMutation({
@@ -72,7 +75,7 @@ function SettingsForm(props: {
       point_amount_min: number;
       point_amount_max: number;
       point_withdraw_min: number;
-      point_withdraw_fee_percent: number;
+      point_withdraw_fee_percent: Record<ArcaChannel, number>;
     }) => {
       const { data, error } = await eden.admin.settings.patch(body);
       if (error) {
@@ -96,12 +99,14 @@ function SettingsForm(props: {
     const point_amount_min = Number(draft.point_amount_min);
     const point_amount_max = Number(draft.point_amount_max);
     const point_withdraw_min = Number(draft.point_withdraw_min);
-    const point_withdraw_fee_percent = Number(draft.point_withdraw_fee_percent);
+    const point_withdraw_fee_percent = Object.fromEntries(
+      ARCA_CHANNEL_IDS.map((id) => [id, Number(draft.point_withdraw_fee_percent[id])]),
+    ) as Record<ArcaChannel, number>;
     if (
       !Number.isInteger(point_amount_min) ||
       !Number.isInteger(point_amount_max) ||
       !Number.isInteger(point_withdraw_min) ||
-      !Number.isInteger(point_withdraw_fee_percent)
+      ARCA_CHANNEL_IDS.some((id) => !Number.isInteger(point_withdraw_fee_percent[id]))
     ) {
       toast.warning("모든 값은 정수여야 합니다");
       return;
@@ -134,10 +139,22 @@ function SettingsForm(props: {
         value={draft.point_withdraw_min}
         onValueChange={(value) => setDraft({ ...draft, point_withdraw_min: value })}
       />
-      <WithdrawFeeField
-        value={draft.point_withdraw_fee_percent}
-        onValueChange={(value) => setDraft({ ...draft, point_withdraw_fee_percent: value })}
-      />
+      {ARCA_CHANNEL_IDS.map((channel) => (
+        <WithdrawFeeField
+          key={channel}
+          channel={channel}
+          value={draft.point_withdraw_fee_percent[channel]}
+          onValueChange={(value) =>
+            setDraft({
+              ...draft,
+              point_withdraw_fee_percent: {
+                ...draft.point_withdraw_fee_percent,
+                [channel]: value,
+              },
+            })
+          }
+        />
+      ))}
       <div className="flex justify-end">
         <Button type="submit" disabled={save.isPending}>
           저장
@@ -147,7 +164,11 @@ function SettingsForm(props: {
   );
 }
 
-function WithdrawFeeField(props: { value: string; onValueChange: (value: string) => void }) {
+function WithdrawFeeField(props: {
+  channel: ArcaChannel;
+  value: string;
+  onValueChange: (value: string) => void;
+}) {
   const surcharge = Number(props.value);
   const applied =
     props.value.trim() !== "" && Number.isInteger(surcharge) && surcharge >= 0
@@ -156,19 +177,21 @@ function WithdrawFeeField(props: { value: string; onValueChange: (value: string)
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="point_withdraw_fee_percent">출금 수수료 (%)</Label>
+      <Label htmlFor={`point_withdraw_fee_percent_${props.channel}`}>
+        출금 수수료 ({props.channel}) (%)
+      </Label>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <Input
           disabled
           readOnly
           value={String(POINT_WITHDRAW_FEE_BASE_PERCENT)}
-          aria-label="기본 출금 수수료"
+          aria-label={`${props.channel} 기본 출금 수수료`}
         />
         <span className="text-muted-foreground" aria-hidden>
           +
         </span>
         <Input
-          id="point_withdraw_fee_percent"
+          id={`point_withdraw_fee_percent_${props.channel}`}
           inputMode="numeric"
           value={props.value}
           onValueChange={props.onValueChange}
