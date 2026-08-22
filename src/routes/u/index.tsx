@@ -26,6 +26,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  parseWithdrawAmountInput,
+  POINT_WITHDRAW_MIN,
+  quoteWithdrawal,
+} from "@/lib/akasha/services/point-withdraw";
 import { authClient, useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -39,6 +44,7 @@ function RouteComponent() {
   const navi = useNavigate();
 
   const [delaccinput, setDelAccInput] = useState("");
+  const [withdrawInput, setWithdrawInput] = useState("");
 
   const query = useQuery({
     queryKey: ["u:mods-count"],
@@ -54,6 +60,42 @@ function RouteComponent() {
     retry: false,
     placeholderData: (prev) => prev,
   });
+
+  const balanceQuery = useQuery({
+    queryKey: ["u:points-balance"],
+    queryFn: async () => {
+      const { data, error } = await eden.akasha.points.balance.get();
+
+      if (error) {
+        throw new Error(error.value.toString());
+      }
+
+      return data.balance;
+    },
+    retry: false,
+    placeholderData: (prev) => prev,
+  });
+
+  const arcaQuery = useQuery({
+    queryKey: ["u:arca-link"],
+    queryFn: async () => {
+      const { data, error } = await eden.arca.link.get();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const balance = balanceQuery.data ?? 0;
+  const linkedUsername = arcaQuery.data?.arcaUsername ?? null;
+  const withdrawAmount = parseWithdrawAmountInput(withdrawInput);
+  const withdrawQuote = withdrawAmount != null ? quoteWithdrawal(withdrawAmount) : null;
+  const withdrawTooSmall = withdrawAmount != null && withdrawAmount < POINT_WITHDRAW_MIN;
+  const withdrawTooLarge = withdrawAmount != null && withdrawAmount > balance;
+  const canWithdraw =
+    !!linkedUsername &&
+    withdrawAmount != null &&
+    !withdrawTooSmall &&
+    !withdrawTooLarge;
 
   return (
     <>
@@ -76,6 +118,125 @@ function RouteComponent() {
                 </Button>
               </div>
             </div>
+          </div>
+
+          <div className="flex w-lg flex-col gap-6 rounded-lg border p-4">
+            <h2 className="text-2xl font-bold">{t("u.points_balance")}</h2>
+
+            <div className="flex items-center gap-4 sm:gap-16">
+              <div className="flex-1">
+                <Label>{t("u.points_balance")}</Label>
+                <p className="text-sm text-muted-foreground">
+                  <span>{t("u.points_balance_description")}</span>
+                </p>
+              </div>
+              <div className="justify-items-end">
+                <p>{balance}</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center gap-4 sm:gap-16">
+              <div className="flex-1">
+                <Label>{t("u.points_withdraw")}</Label>
+                <p className="text-sm text-muted-foreground">
+                  <span>
+                    {linkedUsername
+                      ? t("u.points_withdraw_description", {
+                          username: linkedUsername,
+                          min: POINT_WITHDRAW_MIN,
+                        })
+                      : t("u.points_withdraw_need_arca")}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {linkedUsername ? (
+              <>
+                <div className="flex items-center gap-4 sm:gap-16">
+                  <div className="flex-1">
+                    <Input
+                      inputMode="numeric"
+                      placeholder={t("u.points_withdraw_amount")}
+                      value={withdrawInput}
+                      onValueChange={setWithdrawInput}
+                    />
+                    {withdrawTooSmall ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t("u.points_withdraw_min", { min: POINT_WITHDRAW_MIN })}
+                      </p>
+                    ) : withdrawTooLarge ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t("u.points_withdraw_insufficient")}
+                      </p>
+                    ) : withdrawQuote ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t("u.points_withdraw_quote", {
+                          fee: withdrawQuote.fee,
+                          payout: withdrawQuote.payout,
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="justify-items-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button disabled={!canWithdraw}>{t("u.points_withdraw")}</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t("u.points_withdraw_confirm_title")}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t("u.points_withdraw_confirm_description", {
+                              amount: withdrawAmount ?? 0,
+                              fee: withdrawQuote?.fee ?? 0,
+                              payout: withdrawQuote?.payout ?? 0,
+                              username: linkedUsername,
+                            })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              if (withdrawAmount == null) return;
+                              const { data, error } = await eden.akasha.points.withdraw.post({
+                                amount: withdrawAmount,
+                              });
+                              if (error) {
+                                toast.error(
+                                  t([
+                                    `u.points_withdraw_errors.${withdrawErrorCode(error.value)}`,
+                                    "u.points_withdraw_errors.unknown",
+                                  ]),
+                                );
+                                return;
+                              }
+                              if (!isWithdrawResult(data)) {
+                                toast.error(t("u.points_withdraw_errors.unknown"));
+                                return;
+                              }
+                              toast.success(
+                                t("u.points_withdraw_done", {
+                                  payout: data.payout,
+                                  username: data.arcaUsername,
+                                }),
+                              );
+                              setWithdrawInput("");
+                              await balanceQuery.refetch();
+                            }}
+                          >
+                            {t("u.points_withdraw")}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div className="flex w-lg flex-col gap-6 rounded-lg border p-4">
@@ -112,7 +273,7 @@ function RouteComponent() {
                       <AlertDialogTitle>정말로 계정을 삭제할까요?</AlertDialogTitle>
                       <AlertDialogDescription>
                         삭제 버튼을 누르는 즉시 계정 데이터가 영구적으로 삭제됩니다. 이 작업은
-                        되돌릴 수 없습니다!
+                        되돌릴 수 없습니다! {t("u.points_delete_blocked")}
                       </AlertDialogDescription>
 
                       <Accordion type="single">
@@ -162,6 +323,11 @@ function RouteComponent() {
                               return;
                             }
 
+                            if (res.error?.message === "point_balance_remaining") {
+                              toast.error(t("u.points_delete_blocked"));
+                              return;
+                            }
+
                             if (res.error?.message) {
                               toast.error(res.error.message);
                             }
@@ -186,5 +352,25 @@ function RouteComponent() {
         </div>
       </div>
     </>
+  );
+}
+
+function withdrawErrorCode(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "error" in value) {
+    return String((value as { error: unknown }).error);
+  }
+  return "unknown";
+}
+
+function isWithdrawResult(
+  data: unknown,
+): data is { payout: number; arcaUsername: string } {
+  return (
+    !!data &&
+    typeof data === "object" &&
+    "payout" in data &&
+    "arcaUsername" in data &&
+    !("error" in data)
   );
 }
