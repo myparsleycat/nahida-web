@@ -8,6 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { pointSettingsQueryKey, usePointSettings } from "@/lib/akasha/services/point-settings";
+import {
+  effectiveWithdrawFeePercent,
+  POINT_WITHDRAW_FEE_BASE_PERCENT,
+} from "@/lib/akasha/services/point-withdraw";
 import { eden } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/settings")({
@@ -27,7 +31,8 @@ function RouteComponent() {
           <CardHeader>
             <CardTitle>포인트 설정</CardTitle>
             <CardDescription>
-              유료 판매 가격과 출금 규칙을 변경합니다. 수수료는 22% 이상이어야 합니다.
+              유료 판매 가격과 출금 규칙을 변경합니다. 기본 {POINT_WITHDRAW_FEE_BASE_PERCENT}%에
+              추가 수수료를 더해 적용합니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -129,9 +134,7 @@ function SettingsForm(props: {
         value={draft.point_withdraw_min}
         onValueChange={(value) => setDraft({ ...draft, point_withdraw_min: value })}
       />
-      <Field
-        id="point_withdraw_fee_percent"
-        label="출금 수수료 (%)"
+      <WithdrawFeeField
         value={draft.point_withdraw_fee_percent}
         onValueChange={(value) => setDraft({ ...draft, point_withdraw_fee_percent: value })}
       />
@@ -141,6 +144,38 @@ function SettingsForm(props: {
         </Button>
       </div>
     </form>
+  );
+}
+
+function WithdrawFeeField(props: { value: string; onValueChange: (value: string) => void }) {
+  const surcharge = Number(props.value);
+  const applied =
+    props.value.trim() !== "" && Number.isInteger(surcharge) && surcharge >= 0
+      ? effectiveWithdrawFeePercent(surcharge)
+      : null;
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="point_withdraw_fee_percent">출금 수수료 (%)</Label>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <Input
+          disabled
+          readOnly
+          value={String(POINT_WITHDRAW_FEE_BASE_PERCENT)}
+          aria-label="기본 출금 수수료"
+        />
+        <span className="text-muted-foreground" aria-hidden>
+          +
+        </span>
+        <Input
+          id="point_withdraw_fee_percent"
+          inputMode="numeric"
+          value={props.value}
+          onValueChange={props.onValueChange}
+        />
+      </div>
+      {applied != null ? <p className="text-muted-foreground">적용 {applied}%</p> : null}
+    </div>
   );
 }
 

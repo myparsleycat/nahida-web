@@ -27,7 +27,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { usePointSettings } from "@/lib/akasha/services/point-settings";
-import { parseWithdrawAmountInput, quoteWithdrawal } from "@/lib/akasha/services/point-withdraw";
+import {
+  effectiveWithdrawFeePercent,
+  parseWithdrawAmountInput,
+  quoteWithdrawal,
+} from "@/lib/akasha/services/point-withdraw";
 import { authClient, useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -90,7 +94,7 @@ function RouteComponent() {
   const withdrawAmount = parseWithdrawAmountInput(withdrawInput);
   const withdrawQuote =
     withdrawAmount != null && feePercent != null
-      ? quoteWithdrawal(withdrawAmount, feePercent)
+      ? quoteWithdrawal(withdrawAmount, effectiveWithdrawFeePercent(feePercent))
       : null;
   const withdrawTooSmall =
     withdrawAmount != null && withdrawMin != null && withdrawAmount < withdrawMin;
