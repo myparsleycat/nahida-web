@@ -256,6 +256,8 @@
     "arca_conflict": "This arca.live username is already linked to another account",
     "arca_unavailable": "Could not verify with arca.live. Try again later",
     "arca_unlink": "Unlink",
+    "arca_unlink_confirm_title": "Unlink arca.live?",
+    "arca_unlink_confirm_description": "Unlinking will disable arca.live features such as point withdrawals and paid mod point access. Are you sure you want to unlink?",
     "arca_unlinked": "Unlinked arca.live"
   },
   "c": {

@@ -237,6 +237,8 @@
     "arca_conflict": "该 arca.live 用户名已绑定其他账号",
     "arca_unavailable": "无法完成 arca.live 验证，请稍后再试",
     "arca_unlink": "解除绑定",
+    "arca_unlink_confirm_title": "解除 arca.live 绑定？",
+    "arca_unlink_confirm_description": "解除绑定后将无法使用 arca.live 积分提现及付费模组积分支付等关联功能。确定要解除绑定吗？",
     "arca_unlinked": "已解除 arca.live 绑定"
   },
   "c": {

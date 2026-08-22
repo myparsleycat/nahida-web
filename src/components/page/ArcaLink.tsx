@@ -3,6 +3,17 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +25,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { ARCA_CHANNEL_IDS, isArcaChannel, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
+import {
+  ARCA_CHANNEL_IDS,
+  isArcaChannel,
+  type ArcaChannel,
+} from "@/lib/akasha/services/arca-channel";
 import { authClient } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -136,9 +151,30 @@ export function ArcaLink() {
         {arcaUsername ? (
           <>
             <Input disabled value={arcaUsername} />
-            <Button variant="outline" onClickPromise={handleUnlink}>
-              {t("u.arca_unlink")}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">{t("u.arca_unlink")}</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("u.arca_unlink_confirm_title")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("u.arca_unlink_confirm_description")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={async () => {
+                      await handleUnlink();
+                    }}
+                  >
+                    {t("u.arca_unlink")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         ) : (
           <>

@@ -247,6 +247,8 @@
     "arca_conflict": "이미 다른 계정에 연결된 arca.live 닉네임입니다",
     "arca_unavailable": "arca.live 인증을 확인할 수 없습니다. 잠시 후 다시 시도하세요",
     "arca_unlink": "연동 해제",
+    "arca_unlink_confirm_title": "arca.live 연동을 해제할까요?",
+    "arca_unlink_confirm_description": "연동을 해제하면 포인트 출금 및 유료 모드 포인트 결제 등 arca.live 연동 기능을 사용할 수 없게 됩니다. 정말로 연동을 해제할까요?",
     "arca_unlinked": "arca.live 연동을 해제했습니다"
   },
   "c": {
