@@ -467,6 +467,8 @@
       "expiryUnset": "到期日期已取消",
       "linkCreated": "公开链接已创建",
       "linkRemoved": "公开链接已删除",
+      "pointsSaved": "积分已保存",
+      "pointsRemoved": "积分已取消",
       "permissionView": "可查看",
       "permissionEdit": "可编辑",
       "permissionUpload": "可上传"
@@ -506,6 +508,7 @@
       "payTitle": "需要支付积分",
       "payModDescription": "打开此模组需要 {{amount}} 积分。",
       "payCollectionDescription": "打开此合集需要 {{amount}} 积分。",
+      "payLinkDescription": "打开此链接需要 {{amount}} 积分。",
       "payToAccess": "支付积分后打开",
       "needLogin": "支付前需要登录。",
       "needArcaLink": "请先绑定 arca.live 账号再支付。",

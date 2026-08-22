@@ -10,6 +10,7 @@ import { ExpiryDatePicker } from "./ExpiryDatePicker";
 import { LinkToggle } from "./LinkToggle";
 import { PasswordForm } from "./PasswordForm";
 import { PermissionList } from "./PermissionList";
+import { PointForm } from "./PointForm";
 import { usePubLinkMutations, usePubLinkQuery } from "./usePubLinkMutations";
 
 export function PubLinkDialog() {
@@ -31,6 +32,7 @@ export function PubLinkDialog() {
     handleCopyInviteUrl,
     handlePasswordSubmit,
     handleDatePickerSave,
+    handlePointsSave,
     handlePubLinkToggle,
     handleCopyLink,
   } = usePubLinkMutations(query, itemId);
@@ -88,6 +90,12 @@ export function PubLinkDialog() {
                       onSave={() => handleDatePickerSave(selectedDate)}
                     />
                   </div>
+
+                  <PointForm
+                    amount={query.data.link.pointAmount ?? null}
+                    channel={query.data.link.pointChannel ?? null}
+                    onSave={handlePointsSave}
+                  />
 
                   <div className="flex flex-row gap-x-3">
                     <input

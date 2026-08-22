@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { ArcaChannel } from "@/lib/akasha/services/arca-channel";
+
 import { eden } from "@/lib/eden";
 import { copyStr } from "@/lib/utils";
 
@@ -204,6 +206,51 @@ export function usePubLinkMutations(
         await query.refetch();
     };
 
+    const pointsMutation = useMutation({
+        mutationKey: ["akasha", "drive", "pub-link-dialog", "link", "points"],
+        mutationFn: async ({
+            id,
+            amount,
+            channel,
+        }: {
+            id: string;
+            amount: number | null;
+            channel?: ArcaChannel;
+        }) => {
+            const { data, error } = await eden.akasha.content.share.link({ id }).points.patch({
+                amount,
+                ...(channel ? { channel } : {}),
+            });
+
+            if (error) {
+                throw new Error(error.value.toString());
+            }
+
+            return data;
+        },
+    });
+
+    const handlePointsSave = async (payload: { amount: number | null; channel?: ArcaChannel }) => {
+        if (!query.data?.link) {
+            toast.warning(ID_IS_EMPTY);
+            return;
+        }
+
+        await pointsMutation.mutateAsync({
+            id: query.data.link.id,
+            amount: payload.amount,
+            channel: payload.channel,
+        });
+
+        toast.success(
+            payload.amount == null
+                ? t("#.PubLinkDialog.pointsRemoved")
+                : t("#.PubLinkDialog.pointsSaved"),
+        );
+
+        await query.refetch();
+    };
+
     const handlePubLinkToggle = async (
         setPubLinkSwitch: (value: boolean) => void,
         currentValue: boolean,
@@ -257,6 +304,7 @@ export function usePubLinkMutations(
         handleCopyInviteUrl,
         handlePasswordSubmit,
         handleDatePickerSave,
+        handlePointsSave,
         handlePubLinkToggle,
         handleCopyLink,
     };

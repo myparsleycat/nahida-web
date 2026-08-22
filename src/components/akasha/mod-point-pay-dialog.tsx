@@ -22,16 +22,15 @@ import { eden } from "@/lib/eden";
 interface ModPointPayDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  modId: string;
-  collectionId?: string;
   amount: number;
   accountUrl: string;
-  scope: "mod" | "collection";
+  description: string;
+  verify: (ledgerId: string) => Promise<{ error?: { value: unknown } | null }>;
   onPaid: () => Promise<void> | void;
 }
 
 export function ModPointPayDialog(props: ModPointPayDialogProps) {
-  const { open, onOpenChange, modId, collectionId, amount, accountUrl, scope, onPaid } = props;
+  const { open, onOpenChange, amount, accountUrl, description, verify, onPaid } = props;
   const { t } = useTranslation();
   const session = useSession();
   const [ledgerId, setLedgerId] = useState("");
@@ -56,10 +55,7 @@ export function ModPointPayDialog(props: ModPointPayDialogProps) {
     setSubmitting(true);
     setErrorCode(null);
     try {
-      const { error } = await eden.akasha.mod({ modId }).points.verify.post({
-        ledgerId,
-        ...(scope === "collection" && collectionId ? { collectionId } : {}),
-      });
+      const { error } = await verify(ledgerId);
       if (error) {
         setErrorCode(pointErrorCode(error.value));
         return;
@@ -77,11 +73,7 @@ export function ModPointPayDialog(props: ModPointPayDialogProps) {
       <DialogContent className="max-h-[min(44rem,calc(100vh-4rem))] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("akasha.points.payTitle")}</DialogTitle>
-          <DialogDescription>
-            {scope === "mod"
-              ? t("akasha.points.payModDescription", { amount })
-              : t("akasha.points.payCollectionDescription", { amount })}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {!loggedIn ? (

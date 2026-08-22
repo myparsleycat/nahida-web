@@ -471,6 +471,8 @@
       "expiryUnset": "만료일이 해제되었습니다",
       "linkCreated": "공개 링크가 생성되었습니다",
       "linkRemoved": "공개 링크가 제거되었습니다",
+      "pointsSaved": "포인트가 저장되었습니다",
+      "pointsRemoved": "포인트가 해제되었습니다",
       "permissionView": "조회 가능",
       "permissionEdit": "편집 가능",
       "permissionUpload": "업로드 가능"
@@ -510,6 +512,7 @@
       "payTitle": "포인트 지불이 필요합니다",
       "payModDescription": "이 모드를 열려면 {{amount}} 포인트가 필요합니다.",
       "payCollectionDescription": "이 컬렉션을 열려면 {{amount}} 포인트가 필요합니다.",
+      "payLinkDescription": "이 링크를 열려면 {{amount}} 포인트가 필요합니다.",
       "payToAccess": "포인트를 지불하고 열기",
       "needLogin": "지불하려면 로그인이 필요합니다.",
       "needArcaLink": "arca.live 계정을 연동한 뒤에 지불할 수 있습니다.",

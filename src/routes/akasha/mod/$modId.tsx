@@ -7,8 +7,8 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { AkashaModContents } from "@/components/akasha/mod-finder";
 import { AkashaModInfo, Bottom } from "@/components/akasha/mod-info";
@@ -20,10 +20,7 @@ import ModContext from "@/context/ModContext";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
 import { getCachedModAccess, setCachedModAccess } from "@/lib/akasha/services/mod-access";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
-import {
-  collectionNeedsPayment,
-  requiredPointAmount,
-} from "@/lib/akasha/services/mod-points";
+import { collectionNeedsPayment, requiredPointAmount } from "@/lib/akasha/services/mod-points";
 import { eden } from "@/lib/eden";
 import { base64url, cn } from "@/lib/utils";
 
@@ -264,11 +261,19 @@ function RouteComponent() {
           <ModPointPayDialog
             open={payOpen}
             onOpenChange={setPayOpen}
-            modId={modId}
-            collectionId={modData.points.scope === "collection" ? collectionId : undefined}
             amount={payAmount}
             accountUrl={modData.points.accountUrl ?? ""}
-            scope={modData.points.scope === "collection" ? "collection" : "mod"}
+            description={
+              modData.points.scope === "collection"
+                ? tr("akasha.points.payCollectionDescription", { amount: payAmount })
+                : tr("akasha.points.payModDescription", { amount: payAmount })
+            }
+            verify={(ledgerId) =>
+              eden.akasha.mod({ modId }).points.verify.post({
+                ledgerId,
+                ...(modData.points.scope === "collection" ? { collectionId } : {}),
+              })
+            }
             onPaid={async () => {
               setPayOpen(false);
               await router.invalidate();

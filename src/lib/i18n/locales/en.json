@@ -480,6 +480,8 @@
       "expiryUnset": "Expiry date has been unset",
       "linkCreated": "Public link has been created",
       "linkRemoved": "Public link has been removed",
+      "pointsSaved": "Points have been saved",
+      "pointsRemoved": "Points have been removed",
       "permissionView": "Can view",
       "permissionEdit": "Can edit",
       "permissionUpload": "Can upload"
@@ -519,6 +521,7 @@
       "payTitle": "Points are required",
       "payModDescription": "Opening this mod requires {{amount}} points.",
       "payCollectionDescription": "Opening this collection requires {{amount}} points.",
+      "payLinkDescription": "Opening this link requires {{amount}} points.",
       "payToAccess": "Pay points to open",
       "needLogin": "You need to sign in to pay.",
       "needArcaLink": "Link your arca.live account before paying.",

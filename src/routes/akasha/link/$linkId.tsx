@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import type { Content } from "@/lib/akasha";
 
+import { ModPointPayDialog } from "@/components/akasha/mod-point-pay-dialog";
 import { AlertWithRandom1619, AliceLoader, Center } from "@/components/common";
 import { ShareLinkContents } from "@/components/page/akasha/ShareLink";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,10 @@ function RouteComponent() {
   const [needToken, setNeedToken] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payRequired, setPayRequired] = useState(false);
+  const [payAmount, setPayAmount] = useState<number | null>(null);
+  const [payAccountUrl, setPayAccountUrl] = useState("");
   const turnstileRef = useRef<TurnstileInstance>(null);
   const busyRef = useRef(false);
   const [currentId, setCurrentId] = useState("");
@@ -186,6 +191,15 @@ function RouteComponent() {
           return;
         }
 
+        if (result.error.status === 402 && isPaymentRequired(result.error.value)) {
+          setReqPwd(false);
+          setPayRequired(true);
+          setPayAmount(result.error.value.amount);
+          setPayAccountUrl(result.error.value.accountUrl);
+          setPayOpen(true);
+          return;
+        }
+
         switch (result.error.value) {
           case "missing_password":
             setReqPwd(true);
@@ -211,6 +225,8 @@ function RouteComponent() {
       }
 
       setReqPwd(false);
+      setPayRequired(false);
+      setPayOpen(false);
       const newToken = result.data.token;
       const newParent = result.data.parent;
 
@@ -262,7 +278,7 @@ function RouteComponent() {
   return (
     <>
       <div className="flex h-full flex-col">
-        {firstLoading && !reqPwd && (
+        {firstLoading && !reqPwd && !payOpen && !payRequired && (
           <Center>
             <AliceLoader />
           </Center>
@@ -274,12 +290,23 @@ function RouteComponent() {
           </Center>
         )}
 
-        {canRetry && !reqPwd && !errMsg && (
+        {canRetry && !reqPwd && !errMsg && !payRequired && (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex w-100 flex-col gap-y-4">
               <p>{t("toast.warning.failure_turnstile")}</p>
               <Button disabled={isBusy} onClick={() => void handleOpenRetry()}>
                 {t("g.continue")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {payRequired && !payOpen && payAmount != null && (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="flex w-100 flex-col gap-y-4">
+              <p>{t("akasha.points.payLinkDescription", { amount: payAmount })}</p>
+              <Button disabled={isBusy} onClick={() => setPayOpen(true)}>
+                {t("akasha.points.payToAccess")}
               </Button>
             </div>
           </div>
@@ -315,7 +342,7 @@ function RouteComponent() {
         )}
 
         <div className="relative flex-1 overflow-hidden">
-          {query.data && !firstLoading && !reqPwd && (
+          {query.data && !firstLoading && !reqPwd && !payRequired && (
             <ShareLinkContents
               link={link}
               content={query.data.content as Content}
@@ -329,6 +356,23 @@ function RouteComponent() {
           )}
         </div>
       </div>
+
+      {payAmount != null && (
+        <ModPointPayDialog
+          open={payOpen}
+          onOpenChange={setPayOpen}
+          amount={payAmount}
+          accountUrl={payAccountUrl}
+          description={t("akasha.points.payLinkDescription", { amount: payAmount })}
+          verify={(ledgerId) => eden.akasha.link({ linkId }).points.verify.post({ ledgerId })}
+          onPaid={async () => {
+            setPayOpen(false);
+            setPayRequired(false);
+            setFirstLoading(true);
+            await initializeExplorer();
+          }}
+        />
+      )}
 
       <div>
         {needToken && (
@@ -353,5 +397,19 @@ function RouteComponent() {
         )}
       </div>
     </>
+  );
+}
+
+function isPaymentRequired(value: unknown): value is {
+  error: "payment_required";
+  amount: number;
+  accountUrl: string;
+} {
+  if (!value || typeof value !== "object") return false;
+  const record = value as { error?: unknown; amount?: unknown; accountUrl?: unknown };
+  return (
+    record.error === "payment_required" &&
+    typeof record.amount === "number" &&
+    typeof record.accountUrl === "string"
   );
 }
