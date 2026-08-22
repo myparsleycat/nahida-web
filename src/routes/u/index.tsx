@@ -26,6 +26,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ARCA_CHANNEL_IDS, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import {
   effectiveWithdrawFeePercent,
@@ -45,7 +46,10 @@ function RouteComponent() {
   const navi = useNavigate();
 
   const [delaccinput, setDelAccInput] = useState("");
-  const [withdrawInput, setWithdrawInput] = useState("");
+  const [withdrawInputs, setWithdrawInputs] = useState<Record<ArcaChannel, string>>({
+    genshinskinmode: "",
+    thingzyoa: "",
+  });
   const pointSettings = usePointSettings();
   const withdrawMin = pointSettings.data?.point_withdraw_min;
   const feePercent = pointSettings.data?.point_withdraw_fee_percent;
@@ -74,7 +78,7 @@ function RouteComponent() {
         throw new Error(error.value.toString());
       }
 
-      return data.balance;
+      return data.balances;
     },
     retry: false,
     placeholderData: (prev) => prev,
@@ -89,23 +93,8 @@ function RouteComponent() {
     },
   });
 
-  const balance = balanceQuery.data ?? 0;
+  const balances = balanceQuery.data ?? { genshinskinmode: 0, thingzyoa: 0 };
   const linkedUsername = arcaQuery.data?.arcaUsername ?? null;
-  const withdrawAmount = parseWithdrawAmountInput(withdrawInput);
-  const withdrawQuote =
-    withdrawAmount != null && feePercent != null
-      ? quoteWithdrawal(withdrawAmount, effectiveWithdrawFeePercent(feePercent))
-      : null;
-  const withdrawTooSmall =
-    withdrawAmount != null && withdrawMin != null && withdrawAmount < withdrawMin;
-  const withdrawTooLarge = withdrawAmount != null && withdrawAmount > balance;
-  const canWithdraw =
-    !!linkedUsername &&
-    withdrawAmount != null &&
-    withdrawMin != null &&
-    feePercent != null &&
-    !withdrawTooSmall &&
-    !withdrawTooLarge;
 
   return (
     <>
@@ -133,17 +122,18 @@ function RouteComponent() {
           <div className="flex w-lg flex-col gap-6 rounded-lg border p-4">
             <h2 className="text-2xl font-bold">{t("u.points_balance")}</h2>
 
-            <div className="flex items-center gap-4 sm:gap-16">
-              <div className="flex-1">
-                <Label>{t("u.points_balance")}</Label>
-                <p className="text-sm text-muted-foreground">
-                  <span>{t("u.points_balance_description")}</span>
-                </p>
+            <p className="text-sm text-muted-foreground">{t("u.points_balance_description")}</p>
+
+            {ARCA_CHANNEL_IDS.map((channel) => (
+              <div key={channel} className="flex items-center gap-4 sm:gap-16">
+                <div className="flex-1">
+                  <Label>{t(`u.arca_channels.${channel}`)}</Label>
+                </div>
+                <div className="justify-items-end">
+                  <p>{balances[channel] ?? 0}</p>
+                </div>
               </div>
-              <div className="justify-items-end">
-                <p>{balance}</p>
-              </div>
-            </div>
+            ))}
 
             <Separator />
 
@@ -163,93 +153,26 @@ function RouteComponent() {
               </div>
             </div>
 
-            {linkedUsername ? (
-              <>
-                <div className="flex items-center gap-4 sm:gap-16">
-                  <div className="flex-1">
-                    <Input
-                      inputMode="numeric"
-                      placeholder={t("u.points_withdraw_amount")}
-                      value={withdrawInput}
-                      onValueChange={setWithdrawInput}
-                      disabled={withdrawMin == null}
-                    />
-                    {withdrawTooSmall ? (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t("u.points_withdraw_min", { min: withdrawMin })}
-                      </p>
-                    ) : withdrawTooLarge ? (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t("u.points_withdraw_insufficient")}
-                      </p>
-                    ) : withdrawQuote ? (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t("u.points_withdraw_quote", {
-                          fee: withdrawQuote.fee,
-                          payout: withdrawQuote.payout,
-                        })}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="justify-items-end">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button disabled={!canWithdraw}>{t("u.points_withdraw")}</Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t("u.points_withdraw_confirm_title")}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t("u.points_withdraw_confirm_description", {
-                              amount: withdrawAmount ?? 0,
-                              fee: withdrawQuote?.fee ?? 0,
-                              payout: withdrawQuote?.payout ?? 0,
-                              username: linkedUsername,
-                            })}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={async () => {
-                              if (withdrawAmount == null) return;
-                              const { data, error } = await eden.akasha.points.withdraw.post({
-                                amount: withdrawAmount,
-                              });
-                              if (error) {
-                                toast.error(
-                                  t([
-                                    `u.points_withdraw_errors.${withdrawErrorCode(error.value)}`,
-                                    "u.points_withdraw_errors.unknown",
-                                  ]),
-                                );
-                                return;
-                              }
-                              if (!isWithdrawResult(data)) {
-                                toast.error(t("u.points_withdraw_errors.unknown"));
-                                return;
-                              }
-                              toast.success(
-                                t("u.points_withdraw_done", {
-                                  payout: data.payout,
-                                  username: data.arcaUsername,
-                                }),
-                              );
-                              setWithdrawInput("");
-                              await balanceQuery.refetch();
-                            }}
-                          >
-                            {t("u.points_withdraw")}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </>
-            ) : null}
+            {linkedUsername
+              ? ARCA_CHANNEL_IDS.map((channel) => (
+                  <ChannelWithdraw
+                    key={channel}
+                    channel={channel}
+                    balance={balances[channel] ?? 0}
+                    input={withdrawInputs[channel]}
+                    onInputChange={(value) =>
+                      setWithdrawInputs((current) => ({ ...current, [channel]: value }))
+                    }
+                    withdrawMin={withdrawMin}
+                    feePercent={feePercent}
+                    username={linkedUsername}
+                    onDone={async () => {
+                      setWithdrawInputs((current) => ({ ...current, [channel]: "" }));
+                      await balanceQuery.refetch();
+                    }}
+                  />
+                ))
+              : null}
           </div>
 
           <div className="flex w-lg flex-col gap-6 rounded-lg border p-4">
@@ -365,6 +288,117 @@ function RouteComponent() {
         </div>
       </div>
     </>
+  );
+}
+
+function ChannelWithdraw(props: {
+  channel: ArcaChannel;
+  balance: number;
+  input: string;
+  onInputChange: (value: string) => void;
+  withdrawMin: number | undefined;
+  feePercent: number | undefined;
+  username: string;
+  onDone: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const amount = parseWithdrawAmountInput(props.input);
+  const quote =
+    amount != null && props.feePercent != null
+      ? quoteWithdrawal(amount, effectiveWithdrawFeePercent(props.feePercent))
+      : null;
+  const tooSmall = amount != null && props.withdrawMin != null && amount < props.withdrawMin;
+  const tooLarge = amount != null && amount > props.balance;
+  const canWithdraw =
+    amount != null &&
+    props.withdrawMin != null &&
+    props.feePercent != null &&
+    !tooSmall &&
+    !tooLarge;
+
+  return (
+    <div className="flex items-center gap-4 sm:gap-16">
+      <div className="flex-1">
+        <Label>{t(`u.arca_channels.${props.channel}`)}</Label>
+        <Input
+          inputMode="numeric"
+          placeholder={t("u.points_withdraw_amount")}
+          value={props.input}
+          onValueChange={props.onInputChange}
+          disabled={props.withdrawMin == null}
+        />
+        {tooSmall ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("u.points_withdraw_min", { min: props.withdrawMin })}
+          </p>
+        ) : tooLarge ? (
+          <p className="mt-1 text-sm text-muted-foreground">{t("u.points_withdraw_insufficient")}</p>
+        ) : quote ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("u.points_withdraw_quote", {
+              fee: quote.fee,
+              payout: quote.payout,
+            })}
+          </p>
+        ) : null}
+      </div>
+      <div className="justify-items-end">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button disabled={!canWithdraw}>{t("u.points_withdraw")}</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("u.points_withdraw_confirm_title")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("u.points_withdraw_confirm_description", {
+                  amount: amount ?? 0,
+                  fee: quote?.fee ?? 0,
+                  payout: quote?.payout ?? 0,
+                  username: props.username,
+                  channel: t(`u.arca_channels.${props.channel}`),
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (amount == null) return;
+                  const { data, error } = await eden.akasha.points.withdraw.post({
+                    amount,
+                    channel: props.channel,
+                  });
+                  if (error) {
+                    toast.error(
+                      t([
+                        `u.points_withdraw_errors.${withdrawErrorCode(error.value)}`,
+                        "u.points_withdraw_errors.unknown",
+                      ]),
+                    );
+                    return;
+                  }
+                  if (!isWithdrawResult(data)) {
+                    toast.error(t("u.points_withdraw_errors.unknown"));
+                    return;
+                  }
+                  toast.success(
+                    t("u.points_withdraw_done", {
+                      payout: data.payout,
+                      username: data.arcaUsername,
+                      channel: t(`u.arca_channels.${props.channel}`),
+                    }),
+                  );
+                  await props.onDone();
+                }}
+              >
+                {t("u.points_withdraw")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
   );
 }
 

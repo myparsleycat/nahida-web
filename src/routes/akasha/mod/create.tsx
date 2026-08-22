@@ -17,6 +17,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import TagsInput from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
+import { ARCA_CHANNEL_IDS, isArcaChannel, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
 import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
@@ -47,6 +48,7 @@ function RouteComponent() {
     password: string | undefined;
     pointScope: "none" | "mod";
     pointAmount: string;
+    pointChannel: ArcaChannel | "";
   }
 
   const defaultValues: Values = {
@@ -57,16 +59,18 @@ function RouteComponent() {
     password: undefined,
     pointScope: "none",
     pointAmount: "",
+    pointChannel: "",
   };
 
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
-      const { title, tags, description, expires, password, pointScope, pointAmount } = value;
+      const { title, tags, description, expires, password, pointScope, pointAmount, pointChannel } =
+        value;
 
       const points =
-        loggedIn && pointScope === "mod"
-          ? { scope: "mod" as const, amount: Number(pointAmount) }
+        loggedIn && pointScope === "mod" && isArcaChannel(pointChannel)
+          ? { scope: "mod" as const, amount: Number(pointAmount), channel: pointChannel }
           : loggedIn
             ? { scope: "none" as const }
             : undefined;
@@ -285,39 +289,73 @@ function RouteComponent() {
               selector={(s) => s.values.pointScope}
               children={(pointScope) =>
                 pointScope === "mod" ? (
-                  <form.Field
-                    name="pointAmount"
-                    validators={{
-                      onChange: ({ value }) => {
-                        const amount = Number(value);
-                        if (!value) return t("akasha.points.amountRequired");
-                        if (
-                          !pointRange ||
-                          !Number.isInteger(amount) ||
-                          amount < pointRange.min ||
-                          amount > pointRange.max
-                        ) {
-                          return t("akasha.points.amountRange", {
-                            min: pointRange?.min ?? "",
-                            max: pointRange?.max ?? "",
-                          });
-                        }
-                      },
-                    }}
-                    children={(f) => (
-                      <div className="w-fullitems-center grid gap-2">
-                        <Label htmlFor={f.name}>{t("akasha.points.amount")}</Label>
-                        <Input
-                          id={f.name}
-                          inputMode="numeric"
-                          value={f.state.value}
-                          onValueChange={(value) => f.handleChange(value)}
-                          disabled={!pointRange}
-                        />
-                        <FieldInfo field={f} />
-                      </div>
-                    )}
-                  />
+                  <>
+                    <form.Field
+                      name="pointChannel"
+                      validators={{
+                        onChange: ({ value }) => {
+                          if (!isArcaChannel(value)) return t("akasha.points.channelRequired");
+                        },
+                      }}
+                      children={(f) => (
+                        <div className="w-fullitems-center grid gap-2">
+                          <Label htmlFor={f.name}>{t("akasha.points.channel")}</Label>
+                          <Select
+                            value={f.state.value || undefined}
+                            onValueChange={(value) => {
+                              if (isArcaChannel(value)) f.handleChange(value);
+                            }}
+                            required
+                          >
+                            <SelectTrigger id={f.name} className="w-full">
+                              <SelectValue placeholder={t("akasha.points.channel")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ARCA_CHANNEL_IDS.map((id) => (
+                                <SelectItem key={id} value={id}>
+                                  {t(`akasha.points.channels.${id}`)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldInfo field={f} />
+                        </div>
+                      )}
+                    />
+                    <form.Field
+                      name="pointAmount"
+                      validators={{
+                        onChange: ({ value }) => {
+                          const amount = Number(value);
+                          if (!value) return t("akasha.points.amountRequired");
+                          if (
+                            !pointRange ||
+                            !Number.isInteger(amount) ||
+                            amount < pointRange.min ||
+                            amount > pointRange.max
+                          ) {
+                            return t("akasha.points.amountRange", {
+                              min: pointRange?.min ?? "",
+                              max: pointRange?.max ?? "",
+                            });
+                          }
+                        },
+                      }}
+                      children={(f) => (
+                        <div className="w-fullitems-center grid gap-2">
+                          <Label htmlFor={f.name}>{t("akasha.points.amount")}</Label>
+                          <Input
+                            id={f.name}
+                            inputMode="numeric"
+                            value={f.state.value}
+                            onValueChange={(value) => f.handleChange(value)}
+                            disabled={!pointRange}
+                          />
+                          <FieldInfo field={f} />
+                        </div>
+                      )}
+                    />
+                  </>
                 ) : null
               }
             />

@@ -44,6 +44,11 @@ import {
 } from "@/components/ui/dialog";
 import { useModContext, type AkashaMod } from "@/context/ModContext";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
+import {
+  ARCA_CHANNEL_IDS,
+  isArcaChannel,
+  type ArcaChannel,
+} from "@/lib/akasha/services/arca-channel";
 import { parsePointAmountInput } from "@/lib/akasha/services/mod-points";
 import { usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
@@ -272,6 +277,14 @@ function EditDialog(props: EditDialogProps) {
   };
 
   const passwordRef = useRef<HTMLInputElement>(null);
+  const [draftChannel, setDraftChannel] = useState<ArcaChannel | "">("");
+  const lockedChannel = isArcaChannel(modQuery?.points?.channel) ? modQuery.points.channel : null;
+
+  const pointChannelFor = (scope: "none" | "mod" | "collection") => {
+    if (lockedChannel) return lockedChannel;
+    if (scope === "none") return undefined;
+    return isArcaChannel(draftChannel) ? draftChannel : null;
+  };
 
   return (
     <Dialog>
@@ -561,11 +574,17 @@ function EditDialog(props: EditDialogProps) {
                   );
                   return;
                 }
+                const channel = pointChannelFor(scope);
+                if (scope !== "none" && !channel) {
+                  toast.warning(t("akasha.points.channelRequired"));
+                  return;
+                }
                 const { error } = await eden.akasha.mod.edit({ modId }).post(
                   {
                     points: {
                       scope,
                       ...(scope === "mod" ? { amount } : {}),
+                      ...(channel ? { channel } : {}),
                     },
                   },
                   { headers: { "x-sig": sig } },
@@ -585,6 +604,29 @@ function EditDialog(props: EditDialogProps) {
                 <SelectItem value="none">{t("akasha.points.scopeNone")}</SelectItem>
                 <SelectItem value="mod">{t("akasha.points.scopeMod")}</SelectItem>
                 <SelectItem value="collection">{t("akasha.points.scopeCollection")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </TopButtonsRow>
+
+          <TopButtonsRow>
+            <Label>{t("akasha.points.channel")}</Label>
+            <Select
+              value={lockedChannel || draftChannel || undefined}
+              disabled={!pointRange || !!lockedChannel}
+              required={!lockedChannel}
+              onValueChange={(value) => {
+                if (isArcaChannel(value)) setDraftChannel(value);
+              }}
+            >
+              <SelectTrigger className="min-w-0 flex-1">
+                <SelectValue placeholder={t("akasha.points.channel")} />
+              </SelectTrigger>
+              <SelectContent>
+                {ARCA_CHANNEL_IDS.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {t(`akasha.points.channels.${id}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </TopButtonsRow>
@@ -610,16 +652,23 @@ function EditDialog(props: EditDialogProps) {
                   return;
                 }
                 if (parsed == null && modQuery?.points?.scope !== "mod") return;
+                const scope =
+                  modQuery?.points?.scope === "collection"
+                    ? "collection"
+                    : parsed == null
+                      ? "none"
+                      : "mod";
+                const channel = pointChannelFor(scope);
+                if (scope !== "none" && !channel) {
+                  toast.warning(t("akasha.points.channelRequired"));
+                  return;
+                }
                 const { error } = await eden.akasha.mod.edit({ modId }).post(
                   {
                     points: {
-                      scope:
-                        modQuery?.points?.scope === "collection"
-                          ? "collection"
-                          : parsed == null
-                            ? "none"
-                            : "mod",
+                      scope,
                       amount: parsed,
+                      ...(channel ? { channel } : {}),
                     },
                   },
                   { headers: { "x-sig": sig } },

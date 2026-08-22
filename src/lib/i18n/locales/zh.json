@@ -202,9 +202,10 @@
     "points_withdraw_insufficient": "不能超过当前余额",
     "points_withdraw_quote": "手续费 {{fee}}P · 实到 {{payout}}P",
     "points_withdraw_confirm_title": "确认提现？",
-    "points_withdraw_confirm_description": "将提现 {{amount}} 积分。扣除 {{fee}} 积分手续费后，会向 {{username}} 发送 {{payout}} 积分",
-    "points_withdraw_done": "已向 {{username}} 发送 {{payout}} 积分",
+    "points_withdraw_confirm_description": "将从 {{channel}} 提现 {{amount}} 积分。扣除 {{fee}} 积分手续费后，会向 {{username}} 发送 {{payout}} 积分",
+    "points_withdraw_done": "已从 {{channel}} 向 {{username}} 发送 {{payout}} 积分",
     "points_withdraw_errors": {
+      "invalid_channel": "提现板块无效",
       "invalid_amount": "提现金额无效",
       "insufficient_balance": "余额不足",
       "arca_not_linked": "请先绑定 arca.live 账号",
@@ -217,6 +218,11 @@
     },
     "delete_account": "删除账户",
     "arca": "Arca.live",
+    "arca_channel": "验证板块",
+    "arca_channels": {
+      "genshinskinmode": "genshinskinmode",
+      "thingzyoa": "thingzyoa"
+    },
     "arca_link": "绑定 arca.live",
     "arca_issue_key": "签发密钥",
     "arca_expires_in": "{{time}}后过期",
@@ -457,6 +463,13 @@
   "akasha": {
     "points": {
       "scope": "积分支付",
+      "channel": "收款板块",
+      "channelRequired": "请选择接收积分的板块",
+      "channelLocked": "收款板块一旦选定就不能更改",
+      "channels": {
+        "genshinskinmode": "genshinskinmode",
+        "thingzyoa": "thingzyoa"
+      },
       "scopeNone": "无",
       "scopeMod": "整个模组",
       "scopeCollection": "按合集",
@@ -499,6 +512,8 @@
         "already_paid": "此对象已经支付过",
         "guest_cannot_set_points": "游客无法设置积分",
         "invalid_point_amount": "积分数额无效",
+        "invalid_point_channel": "请选择接收积分的板块",
+        "point_channel_locked": "收款板块一旦选定就不能更改",
         "invalid_ledger_id": "支付编号无效",
         "invalid_collection_id": "无法确认合集",
         "arca_unavailable": "无法核对 arca.live 账户，请稍后再试",

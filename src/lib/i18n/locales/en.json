@@ -221,9 +221,10 @@
     "points_withdraw_insufficient": "Cannot withdraw more than your balance",
     "points_withdraw_quote": "Fee {{fee}}P · Received {{payout}}P",
     "points_withdraw_confirm_title": "Withdraw points?",
-    "points_withdraw_confirm_description": "Withdraw {{amount}} points. After a {{fee}} point fee, {{payout}} points will be sent to {{username}}",
-    "points_withdraw_done": "Sent {{payout}} points to {{username}}",
+    "points_withdraw_confirm_description": "Withdraw {{amount}} points from {{channel}}. After a {{fee}} point fee, {{payout}} points will be sent to {{username}}",
+    "points_withdraw_done": "Sent {{payout}} points to {{username}} from {{channel}}",
     "points_withdraw_errors": {
+      "invalid_channel": "That withdrawal board is invalid",
       "invalid_amount": "That withdrawal amount is invalid",
       "insufficient_balance": "Insufficient balance",
       "arca_not_linked": "Link an arca.live account to withdraw",
@@ -236,6 +237,11 @@
     },
     "delete_account": "Delete Account",
     "arca": "Arca.live",
+    "arca_channel": "Verification board",
+    "arca_channels": {
+      "genshinskinmode": "genshinskinmode",
+      "thingzyoa": "thingzyoa"
+    },
     "arca_link": "arca.live link",
     "arca_issue_key": "Issue key",
     "arca_expires_in": "Expires in {{time}}",
@@ -478,6 +484,13 @@
   "akasha": {
     "points": {
       "scope": "Point payment",
+      "channel": "Payout board",
+      "channelRequired": "Choose the board that receives points",
+      "channelLocked": "The payout board cannot be changed once set",
+      "channels": {
+        "genshinskinmode": "genshinskinmode",
+        "thingzyoa": "thingzyoa"
+      },
       "scopeNone": "None",
       "scopeMod": "Whole mod",
       "scopeCollection": "Per collection",
@@ -520,6 +533,8 @@
         "already_paid": "This target is already paid",
         "guest_cannot_set_points": "Guests cannot set a point price",
         "invalid_point_amount": "The point amount is invalid",
+        "invalid_point_channel": "Choose the board that receives points",
+        "point_channel_locked": "The payout board cannot be changed once set",
         "invalid_ledger_id": "The payment number is invalid",
         "invalid_collection_id": "The collection could not be verified",
         "arca_unavailable": "The arca.live account page could not be checked. Try again shortly",

@@ -6,7 +6,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { ARCA_CHANNEL_IDS, isArcaChannel, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { authClient } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -16,6 +24,7 @@ export function ArcaLink() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [cooldownSec, setCooldownSec] = useState(0);
   const [keyRemainingSec, setKeyRemainingSec] = useState(0);
+  const [selectedChannel, setSelectedChannel] = useState<ArcaChannel | "">("");
 
   const query = useQuery({
     queryKey: ["u:arca-link"],
@@ -37,9 +46,11 @@ export function ArcaLink() {
   }, [cooldownUntil]);
 
   const pendingKey = query.data?.pendingKey ?? null;
-  const articleUrl = query.data?.articleUrl ?? "https://arca.live/b/genshinskinmode/180637679";
+  const pendingChannel = isArcaChannel(query.data?.channel) ? query.data.channel : null;
+  const articleUrl = query.data?.articleUrl ?? null;
   const arcaUsername = query.data?.arcaUsername ?? null;
   const keyExpiresAt = query.data?.expiresAt ?? 0;
+  const channel = pendingChannel ?? selectedChannel;
 
   useEffect(() => {
     const tick = () => {
@@ -61,7 +72,8 @@ export function ArcaLink() {
   };
 
   const handleIssue = async () => {
-    const { error } = await eden.arca.link.issue.post();
+    if (!isArcaChannel(channel)) return;
+    const { error } = await eden.arca.link.issue.post({ channel });
     if (error) {
       toast.error(t("u.arca_unavailable"));
       return;
@@ -110,6 +122,7 @@ export function ArcaLink() {
       toast.error(t("u.arca_unavailable"));
       return;
     }
+    setSelectedChannel("");
     await Promise.all([query.refetch(), authClient.getSession()]);
     toast.success(t("u.arca_unlinked"));
   };
@@ -127,32 +140,61 @@ export function ArcaLink() {
               {t("u.arca_unlink")}
             </Button>
           </>
-        ) : pendingKey ? (
-          <>
-            <Input disabled value={pendingKey} />
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {t("u.arca_expires_in", { time: formatCountdown(keyRemainingSec) })}
-            </p>
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" onClickPromise={handleCopy}>
-                {t("u.arca_copy_key")}
-              </Button>
-              <Button variant="outline" asChild>
-                <a href={articleUrl} target="_blank" rel="noreferrer">
-                  {t("u.arca_open_post")}
-                </a>
-              </Button>
-              <Button onClickPromise={handleVerify} disabled={cooldownSec > 0}>
-                {cooldownSec > 0
-                  ? t("u.arca_verify_cooldown", { sec: cooldownSec })
-                  : t("u.arca_verify")}
-              </Button>
-            </div>
-          </>
         ) : (
-          <Button onClickPromise={handleIssue} isLoading={query.isLoading}>
-            {t("u.arca_issue_key")}
-          </Button>
+          <>
+            <Select
+              value={channel || undefined}
+              onValueChange={(value) => {
+                if (!pendingKey && isArcaChannel(value)) setSelectedChannel(value);
+              }}
+              disabled={!!pendingKey}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("u.arca_channel")} />
+              </SelectTrigger>
+              <SelectContent>
+                {ARCA_CHANNEL_IDS.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {t(`u.arca_channels.${id}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {pendingKey ? (
+              <>
+                <Input disabled value={pendingKey} />
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {t("u.arca_expires_in", { time: formatCountdown(keyRemainingSec) })}
+                </p>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" onClickPromise={handleCopy}>
+                    {t("u.arca_copy_key")}
+                  </Button>
+                  {articleUrl ? (
+                    <Button variant="outline" asChild>
+                      <a href={articleUrl} target="_blank" rel="noreferrer">
+                        {t("u.arca_open_post")}
+                      </a>
+                    </Button>
+                  ) : null}
+                  <Button onClickPromise={handleVerify} disabled={cooldownSec > 0}>
+                    {cooldownSec > 0
+                      ? t("u.arca_verify_cooldown", { sec: cooldownSec })
+                      : t("u.arca_verify")}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button
+                onClickPromise={handleIssue}
+                isLoading={query.isLoading}
+                disabled={!isArcaChannel(channel)}
+              >
+                {t("u.arca_issue_key")}
+              </Button>
+            )}
+          </>
         )}
       </div>
     </div>

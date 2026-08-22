@@ -267,6 +267,7 @@ function RouteComponent() {
             modId={modId}
             collectionId={modData.points.scope === "collection" ? collectionId : undefined}
             amount={payAmount}
+            accountUrl={modData.points.accountUrl ?? ""}
             scope={modData.points.scope === "collection" ? "collection" : "mod"}
             onPaid={async () => {
               setPayOpen(false);

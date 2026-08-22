@@ -212,9 +212,10 @@
     "points_withdraw_insufficient": "잔액보다 많은 포인트는 출금할 수 없습니다",
     "points_withdraw_quote": "수수료 {{fee}}P · 실수령 {{payout}}P",
     "points_withdraw_confirm_title": "포인트를 출금할까요?",
-    "points_withdraw_confirm_description": "{{amount}}포인트를 출금합니다. 수수료 {{fee}}포인트를 제외한 {{payout}}포인트가 {{username}} 계정으로 보내집니다",
-    "points_withdraw_done": "{{username}} 계정으로 {{payout}}포인트를 보냈습니다",
+    "points_withdraw_confirm_description": "{{channel}}에서 {{amount}}포인트를 출금합니다. 수수료 {{fee}}포인트를 제외한 {{payout}}포인트가 {{username}} 계정으로 보내집니다",
+    "points_withdraw_done": "{{channel}}에서 {{username}} 계정으로 {{payout}}포인트를 보냈습니다",
     "points_withdraw_errors": {
+      "invalid_channel": "출금 게시판이 올바르지 않습니다",
       "invalid_amount": "출금 금액이 올바르지 않습니다",
       "insufficient_balance": "잔액이 부족합니다",
       "arca_not_linked": "arca.live 계정을 연동해야 출금할 수 있습니다",
@@ -227,6 +228,11 @@
     },
     "delete_account": "계정 삭제",
     "arca": "아카라이브",
+    "arca_channel": "인증 게시판",
+    "arca_channels": {
+      "genshinskinmode": "genshinskinmode",
+      "thingzyoa": "thingzyoa"
+    },
     "arca_link": "arca.live 연동",
     "arca_issue_key": "인증키 발급",
     "arca_expires_in": "만료까지 {{time}}",
@@ -469,6 +475,13 @@
   "akasha": {
     "points": {
       "scope": "포인트 지불",
+      "channel": "포인트 수령 게시판",
+      "channelRequired": "포인트를 받을 게시판을 선택해 주세요",
+      "channelLocked": "수령 게시판은 한 번 정하면 바꿀 수 없습니다",
+      "channels": {
+        "genshinskinmode": "genshinskinmode",
+        "thingzyoa": "thingzyoa"
+      },
       "scopeNone": "없음",
       "scopeMod": "모드 전체",
       "scopeCollection": "컬렉션별",
@@ -511,6 +524,8 @@
         "already_paid": "이미 지불한 대상입니다",
         "guest_cannot_set_points": "비회원은 포인트를 설정할 수 없습니다",
         "invalid_point_amount": "포인트 금액이 올바르지 않습니다",
+        "invalid_point_channel": "포인트를 받을 게시판을 선택해 주세요",
+        "point_channel_locked": "수령 게시판은 한 번 정하면 바꿀 수 없습니다",
         "invalid_ledger_id": "지불 번호가 올바르지 않습니다",
         "invalid_collection_id": "컬렉션을 확인할 수 없습니다",
         "arca_unavailable": "arca.live 계좌를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요",

@@ -1,7 +1,5 @@
 import type { AkashaMod } from "@/context/ModContext";
 
-export const ARCA_ACCOUNT_URL = "https://arca.live/b/genshinskinmode/account";
-
 export function isModOwner(mod: AkashaMod | null | undefined) {
     return !!mod?.permission.own || !!mod?.permission.sig;
 }

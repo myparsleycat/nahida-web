@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ARCA_ACCOUNT_URL } from "@/lib/akasha/services/mod-points";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -26,12 +25,13 @@ interface ModPointPayDialogProps {
   modId: string;
   collectionId?: string;
   amount: number;
+  accountUrl: string;
   scope: "mod" | "collection";
   onPaid: () => Promise<void> | void;
 }
 
 export function ModPointPayDialog(props: ModPointPayDialogProps) {
-  const { open, onOpenChange, modId, collectionId, amount, scope, onPaid } = props;
+  const { open, onOpenChange, modId, collectionId, amount, accountUrl, scope, onPaid } = props;
   const { t } = useTranslation();
   const session = useSession();
   const [ledgerId, setLedgerId] = useState("");
@@ -130,7 +130,7 @@ export function ModPointPayDialog(props: ModPointPayDialogProps) {
 
             <DialogFooter>
               <Button variant="outline" asChild>
-                <a href={ARCA_ACCOUNT_URL} target="_blank" rel="noreferrer">
+                <a href={accountUrl} target="_blank" rel="noreferrer">
                   <ExternalLinkIcon />
                   {t("akasha.points.openAccount")}
                 </a>
