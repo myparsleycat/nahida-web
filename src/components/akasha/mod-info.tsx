@@ -44,6 +44,11 @@ import {
 } from "@/components/ui/dialog";
 import { useModContext, type AkashaMod } from "@/context/ModContext";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
+import {
+  POINT_AMOUNT_MAX,
+  POINT_AMOUNT_MIN,
+  parsePointAmountInput,
+} from "@/lib/akasha/services/mod-points";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
@@ -63,6 +68,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
 import { Snippet } from "../ui/snippet";
 import { Spinner } from "../ui/spinner";
@@ -527,6 +533,132 @@ function EditDialog(props: EditDialogProps) {
                 <SaveIcon />
               </Button>
             )}
+          </TopButtonsRow>
+
+          <Separator />
+
+          <TopButtonsRow>
+            <Label>{t("akasha.points.scope")}</Label>
+            <Select
+              value={modQuery?.points?.scope ?? "none"}
+              onValueChange={async (scope: "none" | "mod" | "collection") => {
+                if (!modId) return;
+                const amount = modQuery?.points?.amount ?? undefined;
+                if (scope === "mod" && (amount == null || amount < POINT_AMOUNT_MIN)) {
+                  toast.warning(
+                    t("akasha.points.amountRange", {
+                      min: POINT_AMOUNT_MIN,
+                      max: POINT_AMOUNT_MAX,
+                    }),
+                  );
+                  return;
+                }
+                const { error } = await eden.akasha.mod.edit({ modId }).post(
+                  {
+                    points: {
+                      scope,
+                      ...(scope === "mod" ? { amount } : {}),
+                    },
+                  },
+                  { headers: { "x-sig": sig } },
+                );
+                if (error) {
+                  toast.error(error.value.toString());
+                  return;
+                }
+                await refetch();
+                toast.info(t("akasha.points.scopeSaved"));
+              }}
+            >
+              <SelectTrigger className="min-w-0 flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("akasha.points.scopeNone")}</SelectItem>
+                <SelectItem value="mod">{t("akasha.points.scopeMod")}</SelectItem>
+                <SelectItem value="collection">{t("akasha.points.scopeCollection")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </TopButtonsRow>
+
+          <TopButtonsRow>
+            <Label>{t("akasha.points.amount")}</Label>
+            <Input
+              inputMode="numeric"
+              defaultValue={modQuery?.points?.amount ?? ""}
+              key={String(modQuery?.points?.amount ?? "")}
+              onBlur={async (event) => {
+                if (!modId) return;
+                const parsed = parsePointAmountInput(event.currentTarget.value);
+                if (parsed === "invalid" || (modQuery?.points?.scope === "mod" && parsed == null)) {
+                  toast.warning(
+                    t("akasha.points.amountRange", {
+                      min: POINT_AMOUNT_MIN,
+                      max: POINT_AMOUNT_MAX,
+                    }),
+                  );
+                  return;
+                }
+                if (parsed == null && modQuery?.points?.scope !== "mod") return;
+                const { error } = await eden.akasha.mod.edit({ modId }).post(
+                  {
+                    points: {
+                      scope:
+                        modQuery?.points?.scope === "collection"
+                          ? "collection"
+                          : parsed == null
+                            ? "none"
+                            : "mod",
+                      amount: parsed,
+                    },
+                  },
+                  { headers: { "x-sig": sig } },
+                );
+                if (error) {
+                  toast.error(error.value.toString());
+                  return;
+                }
+                await refetch();
+                toast.info(t("akasha.points.amountSaved"));
+              }}
+            />
+          </TopButtonsRow>
+
+          <TopButtonsRow>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  {t("akasha.points.reset")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("akasha.points.resetTitle")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("akasha.points.resetDescription")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      if (!modId) return;
+                      const { error } = await eden.akasha
+                        .mod({ modId })
+                        .points.reset.post({}, { headers: { "x-sig": sig } });
+                      if (error) {
+                        toast.error(error.value.toString());
+                        return;
+                      }
+                      await refetch();
+                      toast.info(t("akasha.points.resetDone"));
+                    }}
+                  >
+                    {t("akasha.points.reset")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TopButtonsRow>
         </div>
       </DialogContent>

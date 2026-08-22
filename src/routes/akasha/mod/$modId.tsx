@@ -7,10 +7,12 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AkashaModContents } from "@/components/akasha/mod-finder";
 import { AkashaModInfo, Bottom } from "@/components/akasha/mod-info";
+import { ModPointPayDialog } from "@/components/akasha/mod-point-pay-dialog";
 import { AkashaModPwdProtect } from "@/components/akasha/mod-pwd-protect";
 import { Center, ServerCrash, AliceLoader, Random1619 } from "@/components/common";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -18,6 +20,10 @@ import ModContext from "@/context/ModContext";
 import { useIsMobileWidth } from "@/hooks/use-mobile";
 import { getCachedModAccess, setCachedModAccess } from "@/lib/akasha/services/mod-access";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
+import {
+  collectionNeedsPayment,
+  requiredPointAmount,
+} from "@/lib/akasha/services/mod-points";
 import { eden } from "@/lib/eden";
 import { base64url, cn } from "@/lib/utils";
 
@@ -90,12 +96,22 @@ function RouteComponent() {
   const { status, errTxt, modData, sig, preview, accessToken } = Route.useLoaderData();
   const { modId } = Route.useParams();
   const navi = useNavigate();
+  const router = useRouter();
+  const { t: tr } = useTranslation();
   const isMobile = useIsMobileWidth();
 
   const isInitialCollectionSet = useRef(true);
   const [isOpenInfo, setOpenInfo] = useState(false);
   const [itemId, setItemId] = useState("");
   const [collectionId, setCollectionId] = useState("");
+  const [payOpen, setPayOpen] = useState(false);
+
+  const needsPayment = collectionNeedsPayment(modData, collectionId);
+  const payAmount = requiredPointAmount(modData, collectionId);
+
+  useEffect(() => {
+    setPayOpen(needsPayment);
+  }, [needsPayment, collectionId]);
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -178,7 +194,7 @@ function RouteComponent() {
       return data;
     },
     placeholderData: (prev) => prev,
-    enabled: !!itemId,
+    enabled: !!itemId && !needsPayment,
   });
 
   const handleSetItemId = (newItemId: string) => {
@@ -220,7 +236,17 @@ function RouteComponent() {
     <ModContext.Provider value={contextValue}>
       <div className="relative flex size-full flex-row">
         <div className="flex flex-1 shrink-0 flex-col">
-          {itemQuery.data ? (
+          {needsPayment ? (
+            <Center>
+              <button
+                type="button"
+                className="text-muted-foreground"
+                onClick={() => setPayOpen(true)}
+              >
+                {tr("akasha.points.payToAccess")}
+              </button>
+            </Center>
+          ) : itemQuery.data ? (
             <AkashaModContents
               content={itemQuery.data.content}
               children={itemQuery.data.children}
@@ -233,6 +259,21 @@ function RouteComponent() {
             <></>
           )}
         </div>
+
+        {modData && needsPayment && payAmount != null && (
+          <ModPointPayDialog
+            open={payOpen}
+            onOpenChange={setPayOpen}
+            modId={modId}
+            collectionId={modData.points.scope === "collection" ? collectionId : undefined}
+            amount={payAmount}
+            scope={modData.points.scope === "collection" ? "collection" : "mod"}
+            onPaid={async () => {
+              setPayOpen(false);
+              await router.invalidate();
+            }}
+          />
+        )}
 
         {isMobile ? (
           <Sheet open={isOpenInfo} onOpenChange={setOpenInfo}>

@@ -27,15 +27,22 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
 import { deleteModCollection } from "@/lib/akasha/services/deletion";
 import { parseModPath } from "@/lib/akasha/services/mod-drive/common";
+import {
+  POINT_AMOUNT_MAX,
+  POINT_AMOUNT_MIN,
+  parsePointAmountInput,
+} from "@/lib/akasha/services/mod-points";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
 
@@ -58,6 +65,9 @@ export function CollectionList(props: CollectionListProps) {
   const [open, setOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [confirmPrivateCollectionId, setConfirmPrivateCollectionId] = useState("");
+  const [pointCollectionId, setPointCollectionId] = useState("");
+  const [pointAmountDraft, setPointAmountDraft] = useState("");
+  const pointCollection = data.collections.find((item) => item.id === pointCollectionId);
 
   const creMut = useMutation({
     mutationKey: ["akasha", "mod", "collection", "create"],
@@ -89,7 +99,7 @@ export function CollectionList(props: CollectionListProps) {
     mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
       if (!id) return;
 
-      const { data, error } = await eden.akasha.mod.collection({ id }).patch(
+      const { error } = await eden.akasha.mod.collection({ id }).patch(
         {
           private: value,
         },
@@ -101,6 +111,22 @@ export function CollectionList(props: CollectionListProps) {
       if (error) {
         throw new Error(error.value.toString());
       }
+    },
+    onSuccess: async () => {
+      await router.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const pointMut = useMutation({
+    mutationKey: ["akasha", "mod", "collection", "change", "points"],
+    mutationFn: async ({ id, pointAmount }: { id: string; pointAmount: number | null }) => {
+      const { error } = await eden.akasha.mod
+        .collection({ id })
+        .patch({ pointAmount }, { query: { sig } });
+      if (error) throw new Error(error.value.toString());
     },
     onSuccess: async () => {
       await router.invalidate();
@@ -126,6 +152,33 @@ export function CollectionList(props: CollectionListProps) {
     }
   };
 
+  const saveCollectionPoints = () => {
+    if (!pointCollectionId) return;
+    const parsed = parsePointAmountInput(pointAmountDraft);
+    if (parsed === "invalid") {
+      toast.warning(
+        t("akasha.points.amountRange", {
+          min: POINT_AMOUNT_MIN,
+          max: POINT_AMOUNT_MAX,
+        }),
+      );
+      return;
+    }
+    if (parsed === (pointCollection?.pointAmount ?? null)) {
+      setPointCollectionId("");
+      return;
+    }
+    pointMut.mutate(
+      { id: pointCollectionId, pointAmount: parsed },
+      {
+        onSuccess: () => {
+          setPointCollectionId("");
+          toast.info(t("akasha.points.amountSaved"));
+        },
+      },
+    );
+  };
+
   return (
     <ScrollArea className="relative h-full min-h-0 rounded-xl bg-black/40 p-3 inset-shadow-2xs">
       {data.collections.length === 0 && (
@@ -136,14 +189,32 @@ export function CollectionList(props: CollectionListProps) {
 
       <div className="space-y-1">
         {data.collections.map((collection, idx) => (
-          <div key={idx} className="flex h-8 items-center gap-1">
+          <div key={idx} className="flex min-h-8 items-center gap-1">
             <Button
               variant={collectionId === collection.id ? "default" : "ghost"}
-              className="h-full min-w-0 flex-1 text-center whitespace-normal"
+              className="h-8 min-w-0 flex-1 text-center whitespace-normal"
               onClick={() => setCollectionId(collection.id)}
             >
               {collection.name}
+              {collection.pointAmount != null && data.points?.scope === "collection" && !own && (
+                <span className="text-muted-foreground"> ({collection.pointAmount}P)</span>
+              )}
             </Button>
+
+            {own && data.points?.scope === "collection" && (
+              <Button
+                variant="outline"
+                className="h-8 shrink-0 px-2"
+                onClick={() => {
+                  setPointCollectionId(collection.id);
+                  setPointAmountDraft(collection.pointAmount?.toString() ?? "");
+                }}
+              >
+                {collection.pointAmount != null
+                  ? `${collection.pointAmount}P`
+                  : t("akasha.points.free")}
+              </Button>
+            )}
 
             {own && (
               <div>
@@ -280,6 +351,54 @@ export function CollectionList(props: CollectionListProps) {
           </Dialog>
         )}
       </div>
+
+      {own && data.points?.scope === "collection" && (
+        <Dialog
+          open={!!pointCollectionId}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setPointCollectionId("");
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {t("akasha.points.editCollectionTitle", {
+                  name: pointCollection?.name ?? "",
+                })}
+              </DialogTitle>
+              <DialogDescription>
+                {t("akasha.points.editCollectionDescription", {
+                  min: POINT_AMOUNT_MIN,
+                  max: POINT_AMOUNT_MAX,
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="collection-point-amount">{t("akasha.points.amount")}</Label>
+              <Input
+                id="collection-point-amount"
+                inputMode="numeric"
+                value={pointAmountDraft}
+                onValueChange={setPointAmountDraft}
+                placeholder={t("akasha.points.free")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !pointMut.isPending) {
+                    saveCollectionPoints();
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPointCollectionId("")}>
+                {t("g.cancel")}
+              </Button>
+              <Button disabled={pointMut.isPending} onClick={saveCollectionPoints}>
+                {t("akasha.points.save")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </ScrollArea>
   );
 }

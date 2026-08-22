@@ -5,13 +5,21 @@ import { toast } from "sonner";
 
 import { Center, Random1619 } from "@/components/common";
 import { DatePicker } from "@/components/DatePicker";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import TagsInput from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
+import { POINT_AMOUNT_MAX, POINT_AMOUNT_MIN } from "@/lib/akasha/services/mod-points";
+import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
 export const Route = createFileRoute("/akasha/mod/create")({
@@ -24,6 +32,8 @@ export const Route = createFileRoute("/akasha/mod/create")({
 function RouteComponent() {
   const { t } = useTranslation();
   const navi = useNavigate();
+  const session = useSession();
+  const loggedIn = !!session.data?.user;
 
   interface Values {
     title: string;
@@ -31,6 +41,8 @@ function RouteComponent() {
     description: string | undefined;
     expires: Date | undefined;
     password: string | undefined;
+    pointScope: "none" | "mod";
+    pointAmount: string;
   }
 
   const defaultValues: Values = {
@@ -39,12 +51,21 @@ function RouteComponent() {
     description: undefined,
     expires: undefined,
     password: undefined,
+    pointScope: "none",
+    pointAmount: "",
   };
 
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
-      const { title, tags, description, expires, password } = value;
+      const { title, tags, description, expires, password, pointScope, pointAmount } = value;
+
+      const points =
+        loggedIn && pointScope === "mod"
+          ? { scope: "mod" as const, amount: Number(pointAmount) }
+          : loggedIn
+            ? { scope: "none" as const }
+            : undefined;
 
       const { data, error } = await eden.akasha.mod.create.post({
         title,
@@ -52,6 +73,7 @@ function RouteComponent() {
         description,
         expires,
         password,
+        points,
       });
 
       if (error) {
@@ -230,6 +252,71 @@ function RouteComponent() {
             );
           }}
         />
+
+        {loggedIn && (
+          <>
+            <form.Field
+              name="pointScope"
+              children={(f) => (
+                <div className="w-fullitems-center grid gap-2">
+                  <Label htmlFor={f.name}>{t("akasha.points.scope")}</Label>
+                  <Select
+                    value={f.state.value}
+                    onValueChange={(value) => f.handleChange(value as "none" | "mod")}
+                  >
+                    <SelectTrigger id={f.name} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("akasha.points.scopeNone")}</SelectItem>
+                      <SelectItem value="mod">{t("akasha.points.scopeMod")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={f} />
+                </div>
+              )}
+            />
+
+            <form.Subscribe
+              selector={(s) => s.values.pointScope}
+              children={(pointScope) =>
+                pointScope === "mod" ? (
+                  <form.Field
+                    name="pointAmount"
+                    validators={{
+                      onChange: ({ value }) => {
+                        const amount = Number(value);
+                        if (!value) return t("akasha.points.amountRequired");
+                        if (
+                          !Number.isInteger(amount) ||
+                          amount < POINT_AMOUNT_MIN ||
+                          amount > POINT_AMOUNT_MAX
+                        ) {
+                          return t("akasha.points.amountRange", {
+                            min: POINT_AMOUNT_MIN,
+                            max: POINT_AMOUNT_MAX,
+                          });
+                        }
+                      },
+                    }}
+                    children={(f) => (
+                      <div className="w-fullitems-center grid gap-2">
+                        <Label htmlFor={f.name}>{t("akasha.points.amount")}</Label>
+                        <Input
+                          id={f.name}
+                          inputMode="numeric"
+                          value={f.state.value}
+                          onValueChange={(value) => f.handleChange(value)}
+                        />
+                        <FieldInfo field={f} />
+                      </div>
+                    )}
+                  />
+                ) : null
+              }
+            />
+          </>
+        )}
 
         <div className="flex justify-end">
           <form.Subscribe
