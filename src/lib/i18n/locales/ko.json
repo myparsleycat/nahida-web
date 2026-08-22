@@ -477,6 +477,7 @@
   "akasha": {
     "points": {
       "scope": "포인트 지불",
+      "scopeHelp": "다운로더가 모드에 접근할 때 아카라이브 채널로 포인트를 지불하도록 설정합니다.",
       "channel": "포인트 수령 게시판",
       "channelRequired": "포인트를 받을 게시판을 선택해 주세요",
       "channelLocked": "수령 게시판은 한 번 정하면 바꿀 수 없습니다",

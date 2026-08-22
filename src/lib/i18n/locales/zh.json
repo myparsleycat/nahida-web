@@ -465,6 +465,7 @@
   "akasha": {
     "points": {
       "scope": "积分支付",
+      "scopeHelp": "设置用户在访问模组时需向 arca.live 频道支付积分。",
       "channel": "收款板块",
       "channelRequired": "请选择接收积分的板块",
       "channelLocked": "收款板块一旦选定就不能更改",

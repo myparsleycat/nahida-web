@@ -1,5 +1,6 @@
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { InfoBox } from "pixelarticons/react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -17,7 +18,12 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import TagsInput from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
-import { ARCA_CHANNEL_IDS, isArcaChannel, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  ARCA_CHANNEL_IDS,
+  isArcaChannel,
+  type ArcaChannel,
+} from "@/lib/akasha/services/arca-channel";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
 import { pointAmountRanges, usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
@@ -82,8 +88,8 @@ function RouteComponent() {
         points,
       });
 
-      if (error) {
-        toast.error(error.value.toString());
+      if (error || !data || typeof data !== "object") {
+        toast.error(error?.value?.toString() ?? "오류가 발생했습니다");
         return;
       }
 
@@ -265,7 +271,22 @@ function RouteComponent() {
               name="pointScope"
               children={(f) => (
                 <div className="w-fullitems-center grid gap-2">
-                  <Label htmlFor={f.name}>{t("akasha.points.scope")}</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor={f.name}>{t("akasha.points.scope")}</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <InfoBox className="size-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t("akasha.points.scopeHelp")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <Select
                     value={f.state.value}
                     onValueChange={(value) => f.handleChange(value as "none" | "mod")}

@@ -486,6 +486,7 @@
   "akasha": {
     "points": {
       "scope": "Point payment",
+      "scopeHelp": "Require users to pay arca.live channel points to access the mod.",
       "channel": "Payout board",
       "channelRequired": "Choose the board that receives points",
       "channelLocked": "The payout board cannot be changed once set",
