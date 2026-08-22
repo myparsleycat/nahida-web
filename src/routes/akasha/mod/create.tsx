@@ -332,7 +332,7 @@ function RouteComponent() {
                             <SelectContent>
                               {ARCA_CHANNEL_IDS.map((id) => (
                                 <SelectItem key={id} value={id}>
-                                  {t(`akasha.points.channels.${id}`)}
+                                  {t(`akasha.points.channelOptions.${id}`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

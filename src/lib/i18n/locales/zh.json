@@ -473,6 +473,10 @@
         "genshinskinmode": "genshinskinmode",
         "thingzyoa": "thingzyoa"
       },
+      "channelOptions": {
+        "genshinskinmode": "genshinskinmode (原神、星穹铁道、绝区零)",
+        "thingzyoa": "thingzyoa (鸣潮、终末地)"
+      },
       "scopeNone": "无",
       "scopeMod": "整个模组",
       "scopeCollection": "按合集",

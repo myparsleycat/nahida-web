@@ -485,6 +485,10 @@
         "genshinskinmode": "genshinskinmode",
         "thingzyoa": "thingzyoa"
       },
+      "channelOptions": {
+        "genshinskinmode": "genshinskinmode (원신, 스타레일, 젠레스 존 제로)",
+        "thingzyoa": "thingzyoa (명조, 엔드필드)"
+      },
       "scopeNone": "없음",
       "scopeMod": "모드 전체",
       "scopeCollection": "컬렉션별",
