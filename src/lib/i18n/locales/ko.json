@@ -185,7 +185,7 @@
       "preview": "프리뷰",
       "upload_date": "업로드 날짜",
       "status": "상태",
-      "paid": "지불",
+      "paid": "수익",
       "password": "암호",
       "title": "타이틀",
       "description": "설명",
@@ -197,6 +197,8 @@
         "label": "정렬",
         "latest": "최신순",
         "oldest": "오래된순",
+        "revenue_desc": "수익 높은순",
+        "revenue_asc": "수익 낮은순",
         "title_asc": "타이틀 (A-Z)",
         "title_desc": "타이틀 (Z-A)"
       }

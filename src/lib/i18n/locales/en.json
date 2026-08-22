@@ -184,7 +184,7 @@
       "preview": "Preview",
       "upload_date": "Upload Date",
       "status": "Status",
-      "paid": "Paid",
+      "paid": "Revenue",
       "password": "Password",
       "title": "Title",
       "description": "Description",
@@ -196,6 +196,8 @@
         "label": "Sort",
         "latest": "Latest",
         "oldest": "Oldest",
+        "revenue_desc": "Highest Revenue",
+        "revenue_asc": "Lowest Revenue",
         "title_asc": "Title (A-Z)",
         "title_desc": "Title (Z-A)"
       },

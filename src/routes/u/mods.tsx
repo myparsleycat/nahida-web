@@ -157,6 +157,22 @@ function RouteComponent() {
       if (sortBy === "oldest") {
         return a.createdAt.getTime() - b.createdAt.getTime();
       }
+      if (sortBy === "revenue_desc") {
+        const amountA = a.paidAmount ?? -1;
+        const amountB = b.paidAmount ?? -1;
+        if (amountB !== amountA) {
+          return amountB - amountA;
+        }
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+      if (sortBy === "revenue_asc") {
+        const amountA = a.paidAmount ?? -1;
+        const amountB = b.paidAmount ?? -1;
+        if (amountA !== amountB) {
+          return amountA - amountB;
+        }
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
       if (sortBy === "title_asc") {
         return a.title.localeCompare(b.title);
       }
@@ -198,6 +214,8 @@ function RouteComponent() {
                 <SelectContent>
                   <SelectItem value="latest">{t("u.mods.sort.latest")}</SelectItem>
                   <SelectItem value="oldest">{t("u.mods.sort.oldest")}</SelectItem>
+                  <SelectItem value="revenue_desc">{t("u.mods.sort.revenue_desc")}</SelectItem>
+                  <SelectItem value="revenue_asc">{t("u.mods.sort.revenue_asc")}</SelectItem>
                   <SelectItem value="title_asc">{t("u.mods.sort.title_asc")}</SelectItem>
                   <SelectItem value="title_desc">{t("u.mods.sort.title_desc")}</SelectItem>
                 </SelectContent>

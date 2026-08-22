@@ -212,8 +212,9 @@ export function Password({ password }: { password: boolean }) {
 }
 
 export function Paid({ paidAmount }: { paidAmount: number | null }) {
-  if (paidAmount === null) return <XIcon />;
-  return <span>{paidAmount}</span>;
+  if (paidAmount === null) return <span className="text-muted-foreground">-</span>;
+  if (paidAmount === 0) return <span className="tabular-nums text-muted-foreground">0 P</span>;
+  return <span className="tabular-nums font-medium text-foreground">{paidAmount.toLocaleString()} P</span>;
 }
 
 export function Title({ title }: { title: string }) {

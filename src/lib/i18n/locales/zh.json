@@ -183,13 +183,23 @@
       "preview": "预览",
       "upload_date": "上传日期",
       "status": "状态",
-      "paid": "已支付",
+      "paid": "收益",
       "password": "密码",
       "title": "标题",
       "description": "描述",
       "tags": "标签",
       "previous": "上一页",
-      "next": "下一页"
+      "next": "下一页",
+      "search_placeholder": "搜索...",
+      "sort": {
+        "label": "排序",
+        "latest": "最新",
+        "oldest": "最旧",
+        "revenue_desc": "收益从高到低",
+        "revenue_asc": "收益从低到高",
+        "title_asc": "标题 (A-Z)",
+        "title_desc": "标题 (Z-A)"
+      }
     },
     "points_balance": "积分余额",
     "points_balance_description": "来自模组付费的积分",
