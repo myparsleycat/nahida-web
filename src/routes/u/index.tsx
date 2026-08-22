@@ -23,6 +23,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -46,16 +54,10 @@ function RouteComponent() {
   const navi = useNavigate();
 
   const [delaccinput, setDelAccInput] = useState("");
-  const [withdrawInputs, setWithdrawInputs] = useState<Record<ArcaChannel, string>>({
-    genshinskinmode: "",
-    thingzyoa: "",
-  });
+  const [withdrawChannel, setWithdrawChannel] = useState<ArcaChannel | null>(null);
   const pointSettings = usePointSettings();
   const withdrawMin = pointSettings.data?.point_withdraw_min;
   const feePercents = pointSettings.data?.point_withdraw_fee_percent;
-  const withdrawMinDescription = withdrawMin
-    ? Math.min(...ARCA_CHANNEL_IDS.map((id) => withdrawMin[id]))
-    : undefined;
 
   const query = useQuery({
     queryKey: ["u:mods-count"],
@@ -132,51 +134,41 @@ function RouteComponent() {
                 <div className="flex-1">
                   <Label>{t(`u.arca_channels.${channel}`)}</Label>
                 </div>
-                <div className="justify-items-end">
+                <div className="flex items-center gap-3">
                   <p>{balances[channel] ?? 0}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!linkedUsername || (balances[channel] ?? 0) <= 0}
+                    onClick={() => setWithdrawChannel(channel)}
+                  >
+                    {t("u.points_withdraw")}
+                  </Button>
                 </div>
               </div>
             ))}
 
-            <Separator />
-
-            <div className="flex items-center gap-4 sm:gap-16">
-              <div className="flex-1">
-                <Label>{t("u.points_withdraw")}</Label>
-                <p className="text-sm text-muted-foreground">
-                  <span>
-                    {linkedUsername
-                      ? t("u.points_withdraw_description", {
-                          username: linkedUsername,
-                          min: withdrawMinDescription ?? "",
-                        })
-                      : t("u.points_withdraw_need_arca")}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            {linkedUsername
-              ? ARCA_CHANNEL_IDS.map((channel) => (
-                  <ChannelWithdraw
-                    key={channel}
-                    channel={channel}
-                    balance={balances[channel] ?? 0}
-                    input={withdrawInputs[channel]}
-                    onInputChange={(value) =>
-                      setWithdrawInputs((current) => ({ ...current, [channel]: value }))
-                    }
-                    withdrawMin={withdrawMin?.[channel]}
-                    feePercent={feePercents?.[channel]}
-                    username={linkedUsername}
-                    onDone={async () => {
-                      setWithdrawInputs((current) => ({ ...current, [channel]: "" }));
-                      await balanceQuery.refetch();
-                    }}
-                  />
-                ))
-              : null}
+            {!linkedUsername && (
+              <p className="text-xs text-muted-foreground">{t("u.points_withdraw_need_arca")}</p>
+            )}
           </div>
+
+          {withdrawChannel && (
+            <WithdrawDialog
+              channel={withdrawChannel}
+              open={!!withdrawChannel}
+              onOpenChange={(open) => {
+                if (!open) setWithdrawChannel(null);
+              }}
+              balance={balances[withdrawChannel] ?? 0}
+              withdrawMin={withdrawMin?.[withdrawChannel]}
+              feePercent={feePercents?.[withdrawChannel]}
+              username={linkedUsername}
+              onDone={async () => {
+                await balanceQuery.refetch();
+              }}
+            />
+          )}
 
           <div className="flex w-lg flex-col gap-6 rounded-lg border p-4">
             <h2 className="text-2xl font-bold">{t("g.account")}</h2>
@@ -294,18 +286,21 @@ function RouteComponent() {
   );
 }
 
-function ChannelWithdraw(props: {
+function WithdrawDialog(props: {
   channel: ArcaChannel;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   balance: number;
-  input: string;
-  onInputChange: (value: string) => void;
   withdrawMin: number | undefined;
   feePercent: number | undefined;
-  username: string;
+  username: string | null;
   onDone: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const amount = parseWithdrawAmountInput(props.input);
+  const [input, setInput] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const amount = parseWithdrawAmountInput(input);
   const quote =
     amount != null && props.feePercent != null
       ? quoteWithdrawal(amount, effectiveWithdrawFeePercent(props.feePercent))
@@ -317,93 +312,122 @@ function ChannelWithdraw(props: {
     props.withdrawMin != null &&
     props.feePercent != null &&
     !tooSmall &&
-    !tooLarge;
+    !tooLarge &&
+    props.username != null;
 
   return (
-    <div className="flex items-center gap-4 sm:gap-16">
-      <div className="flex-1">
-        <Label>{t(`u.arca_channels.${props.channel}`)}</Label>
-        <Input
-          inputMode="numeric"
-          placeholder={t("u.points_withdraw_amount")}
-          value={props.input}
-          onValueChange={props.onInputChange}
-          disabled={props.withdrawMin == null}
-        />
-        {tooSmall ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("u.points_withdraw_min", { min: props.withdrawMin })}
-          </p>
-        ) : tooLarge ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("u.points_withdraw_insufficient")}
-          </p>
-        ) : quote ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("u.points_withdraw_quote", {
-              fee: quote.fee,
-              payout: quote.payout,
-            })}
-          </p>
-        ) : null}
-      </div>
-      <div className="justify-items-end">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button disabled={!canWithdraw}>{t("u.points_withdraw")}</Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t("u.points_withdraw_confirm_title")}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("u.points_withdraw_confirm_description", {
-                  amount: amount ?? 0,
-                  fee: quote?.fee ?? 0,
-                  payout: quote?.payout ?? 0,
-                  username: props.username,
+    <Dialog
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open) {
+          setInput("");
+        }
+        props.onOpenChange(open);
+      }}
+    >
+      <DialogContent>
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!canWithdraw || amount == null) return;
+            setSubmitting(true);
+            try {
+              const { data, error } = await eden.akasha.points.withdraw.post({
+                amount,
+                channel: props.channel,
+              });
+              if (error) {
+                toast.error(
+                  t([
+                    `u.points_withdraw_errors.${withdrawErrorCode(error.value)}`,
+                    "u.points_withdraw_errors.unknown",
+                  ]),
+                );
+                return;
+              }
+              if (!isWithdrawResult(data)) {
+                toast.error(t("u.points_withdraw_errors.unknown"));
+                return;
+              }
+              toast.success(
+                t("u.points_withdraw_done", {
+                  payout: data.payout,
+                  username: data.arcaUsername,
                   channel: t(`u.arca_channels.${props.channel}`),
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t("g.cancel")}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={async () => {
-                  if (amount == null) return;
-                  const { data, error } = await eden.akasha.points.withdraw.post({
-                    amount,
-                    channel: props.channel,
-                  });
-                  if (error) {
-                    toast.error(
-                      t([
-                        `u.points_withdraw_errors.${withdrawErrorCode(error.value)}`,
-                        "u.points_withdraw_errors.unknown",
-                      ]),
-                    );
-                    return;
-                  }
-                  if (!isWithdrawResult(data)) {
-                    toast.error(t("u.points_withdraw_errors.unknown"));
-                    return;
-                  }
-                  toast.success(
-                    t("u.points_withdraw_done", {
-                      payout: data.payout,
-                      username: data.arcaUsername,
-                      channel: t(`u.arca_channels.${props.channel}`),
-                    }),
-                  );
-                  await props.onDone();
-                }}
-              >
-                {t("u.points_withdraw")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
+                }),
+              );
+              props.onOpenChange(false);
+              await props.onDone();
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {t("u.points_withdraw")} ({t(`u.arca_channels.${props.channel}`)})
+            </DialogTitle>
+            <DialogDescription>
+              {props.username
+                ? t("u.points_withdraw_description", {
+                    username: props.username,
+                    min: props.withdrawMin ?? "",
+                  })
+                : t("u.points_withdraw_need_arca")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{t("u.points_balance")}</span>
+              <span className="font-semibold">{props.balance}</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="withdraw-amount">{t("u.points_withdraw_amount")}</Label>
+              <Input
+                id="withdraw-amount"
+                inputMode="numeric"
+                placeholder={t("u.points_withdraw_amount")}
+                value={input}
+                onValueChange={setInput}
+                disabled={props.withdrawMin == null || submitting}
+                autoFocus
+              />
+              {tooSmall ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("u.points_withdraw_min", { min: props.withdrawMin })}
+                </p>
+              ) : tooLarge ? (
+                <p className="text-xs text-destructive">{t("u.points_withdraw_insufficient")}</p>
+              ) : quote ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("u.points_withdraw_quote", {
+                    fee: quote.fee,
+                    payout: quote.payout,
+                  })}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => props.onOpenChange(false)}
+              disabled={submitting}
+            >
+              {t("g.cancel")}
+            </Button>
+            <Button type="submit" disabled={!canWithdraw || submitting}>
+              {t("u.points_withdraw")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
