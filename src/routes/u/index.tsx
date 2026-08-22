@@ -53,6 +53,9 @@ function RouteComponent() {
   const pointSettings = usePointSettings();
   const withdrawMin = pointSettings.data?.point_withdraw_min;
   const feePercents = pointSettings.data?.point_withdraw_fee_percent;
+  const withdrawMinDescription = withdrawMin
+    ? Math.min(...ARCA_CHANNEL_IDS.map((id) => withdrawMin[id]))
+    : undefined;
 
   const query = useQuery({
     queryKey: ["u:mods-count"],
@@ -145,7 +148,7 @@ function RouteComponent() {
                     {linkedUsername
                       ? t("u.points_withdraw_description", {
                           username: linkedUsername,
-                          min: withdrawMin ?? "",
+                          min: withdrawMinDescription ?? "",
                         })
                       : t("u.points_withdraw_need_arca")}
                   </span>
@@ -163,7 +166,7 @@ function RouteComponent() {
                     onInputChange={(value) =>
                       setWithdrawInputs((current) => ({ ...current, [channel]: value }))
                     }
-                    withdrawMin={withdrawMin}
+                    withdrawMin={withdrawMin?.[channel]}
                     feePercent={feePercents?.[channel]}
                     username={linkedUsername}
                     onDone={async () => {

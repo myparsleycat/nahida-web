@@ -36,10 +36,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModContext } from "@/context/ModContext";
+import { isArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { deleteModCollection } from "@/lib/akasha/services/deletion";
 import { parseModPath } from "@/lib/akasha/services/mod-drive/common";
 import { parsePointAmountInput } from "@/lib/akasha/services/mod-points";
-import { usePointSettings } from "@/lib/akasha/services/point-settings";
+import { pointAmountRanges, usePointSettings } from "@/lib/akasha/services/point-settings";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
 
@@ -66,8 +67,9 @@ export function CollectionList(props: CollectionListProps) {
   const [pointAmountDraft, setPointAmountDraft] = useState("");
   const pointCollection = data.collections.find((item) => item.id === pointCollectionId);
   const pointSettings = usePointSettings();
-  const pointRange = pointSettings.data
-    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
+  const modChannel = isArcaChannel(modQuery?.points?.channel) ? modQuery.points.channel : null;
+  const pointRange = pointSettings.data && modChannel
+    ? pointAmountRanges(pointSettings.data)[modChannel]
     : null;
 
   const creMut = useMutation({

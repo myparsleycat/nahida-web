@@ -19,7 +19,7 @@ import TagsInput from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
 import { ARCA_CHANNEL_IDS, isArcaChannel, type ArcaChannel } from "@/lib/akasha/services/arca-channel";
 import { modStorage } from "@/lib/akasha/services/mod-drive/localstorage";
-import { usePointSettings } from "@/lib/akasha/services/point-settings";
+import { pointAmountRanges, usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 
@@ -36,9 +36,7 @@ function RouteComponent() {
   const session = useSession();
   const loggedIn = !!session.data?.user;
   const pointSettings = usePointSettings();
-  const pointRange = pointSettings.data
-    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
-    : null;
+  const pointRanges = pointSettings.data ? pointAmountRanges(pointSettings.data) : null;
 
   interface Values {
     title: string;
@@ -327,16 +325,18 @@ function RouteComponent() {
                       validators={{
                         onChange: ({ value }) => {
                           const amount = Number(value);
+                          const channel = form.state.values.pointChannel;
+                          const range = isArcaChannel(channel) ? pointRanges?.[channel] : null;
                           if (!value) return t("akasha.points.amountRequired");
                           if (
-                            !pointRange ||
+                            !range ||
                             !Number.isInteger(amount) ||
-                            amount < pointRange.min ||
-                            amount > pointRange.max
+                            amount < range.min ||
+                            amount > range.max
                           ) {
                             return t("akasha.points.amountRange", {
-                              min: pointRange?.min ?? "",
-                              max: pointRange?.max ?? "",
+                              min: range?.min ?? "",
+                              max: range?.max ?? "",
                             });
                           }
                         },
@@ -349,7 +349,7 @@ function RouteComponent() {
                             inputMode="numeric"
                             value={f.state.value}
                             onValueChange={(value) => f.handleChange(value)}
-                            disabled={!pointRange}
+                            disabled={!pointRanges}
                           />
                           <FieldInfo field={f} />
                         </div>

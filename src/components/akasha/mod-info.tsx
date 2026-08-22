@@ -50,7 +50,7 @@ import {
   type ArcaChannel,
 } from "@/lib/akasha/services/arca-channel";
 import { parsePointAmountInput } from "@/lib/akasha/services/mod-points";
-import { usePointSettings } from "@/lib/akasha/services/point-settings";
+import { pointAmountRanges, usePointSettings } from "@/lib/akasha/services/point-settings";
 import { useSession } from "@/lib/auth-client";
 import { eden } from "@/lib/eden";
 import { cn, formatDate, formatSize } from "@/lib/utils";
@@ -268,17 +268,20 @@ function EditDialog(props: EditDialogProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const pointSettings = usePointSettings();
-  const pointRange = pointSettings.data
-    ? { min: pointSettings.data.point_amount_min, max: pointSettings.data.point_amount_max }
-    : null;
-
-  const refetch = async () => {
-    await router.invalidate();
-  };
 
   const passwordRef = useRef<HTMLInputElement>(null);
   const [draftChannel, setDraftChannel] = useState<ArcaChannel | "">("");
   const lockedChannel = isArcaChannel(modQuery?.points?.channel) ? modQuery.points.channel : null;
+
+  const pointRanges = pointSettings.data ? pointAmountRanges(pointSettings.data) : null;
+
+  const activeChannel: ArcaChannel | null =
+    lockedChannel ?? (isArcaChannel(draftChannel) ? draftChannel : null);
+  const pointRange = activeChannel ? pointRanges?.[activeChannel] ?? null : null;
+
+  const refetch = async () => {
+    await router.invalidate();
+  };
 
   const pointChannelFor = (scope: "none" | "mod" | "collection") => {
     if (lockedChannel) return lockedChannel;
